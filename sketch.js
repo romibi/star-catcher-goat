@@ -1,28 +1,48 @@
-let STAR_TIMER_LIKELYHOOD = 0.0005;
-let STAR_MAX_LIKELYHOOD = 0.95;
-let STAR_BASE_LIKELYHOOD = 0.3;
-let FORCE_STAR_SPAWN_MIN = 2;
-let MAX_STARS = 2;
-let FRAME_RATE = 10;
-let STAR_MOVE_RATE = 10; // every x frame
-let STAR_STOP_SPAWN_FRAMECOUNT = 1120;
-let GAME_END_FRAMECOUNT = 1200;
+// difficulty settings
+let STAR_BASE_LIKELYHOOD = 0.3; // at start 30% chance of 1 star. (15% for 2nd star)
+let STAR_MAX_LIKELYHOOD = 0.95; // max chance of 95% for 1 star (47.5% for 2nd star)
+let STAR_TIMER_LIKELYHOOD = 0.0005; // star spawn likely hood increase over time
+let FORCE_STAR_SPAWN_MIN = 2; // if 2 or less stars 1 star spawns 100%
+let MAX_STARS = 2; // max stars per row
 
+// speed
+let FRAME_RATE = 10; // fps
+let STAR_MOVE_RATE = 10; // stars move every x frames
+
+// game end
+let STAR_STOP_SPAWN_FRAMECOUNT = 1120; // no more stars after 112 seconds
+let GAME_END_FRAMECOUNT = 1200; // stop game loop after 120 seconds
+
+// how many stars? 6x3 or 6x6
 let rows = 6;
-let columns = 6;
-let rowTemplate = Array(columns).fill(false);
+let columns = 6; // code works with 3 or 6 columns
 
+// game status:
+let rowTemplate = Array(columns).fill(false);
 let stars = Array.from(Array(rows), () => [...rowTemplate]);
 let goatPos = 0; // 0 = column 0&1, 1 = column 2&3, 2 = column 4&5
 let goatDir = 0; // 0 = left, 1 = right;
 let goatGlowHorn = 0; // glow intensity;
 let goatGlowBody = 0; // glow intensity;
 
+// points
 let starsCatchedHorn = 0;
 let starsCatchedButt = 0;
 let starsMissed = 0;
 
-let vizPos = [
+// vizPos für 3 columns
+let vizPos3 = [
+  [ {x:40,y:40}                           , {x:200,y:40}, {x:300,y:40}              ],
+  [              {x:70,y:60}, {x:170,y:60}                            , {x:330,y:60}],
+  [ {x:40,y:80},                            {x:200,y:80}, {x:300,y:80}              ],
+  
+  [               {x:70,y:160},                {x:200,y:160},                {x:330,y:160}],
+  [ {x:40,y:180},               {x:170,y:180},                {x:300,y:180}               ],
+  [               {x:70,y:200},                {x:200,y:200},                {x:330,y:200}]
+]
+
+// vizPos für 6 columns
+let vizPos6 = [
   [ {x:40,y:40}, {x:70,y:40}, {x:170,y:40}, {x:200,y:40}, {x:300,y:40}, {x:330,y:40}],
   [ {x:40,y:60}, {x:70,y:60}, {x:170,y:60}, {x:200,y:60}, {x:300,y:60}, {x:330,y:60}],
   [ {x:40,y:80}, {x:70,y:80}, {x:170,y:80}, {x:200,y:80}, {x:300,y:80}, {x:330,y:80}],
@@ -32,6 +52,10 @@ let vizPos = [
   [ {x:40,y:200}, {x:70,y:200}, {x:170,y:200}, {x:200,y:200}, {x:300,y:200}, {x:330,y:200}]
 ]
 
+let vizPos; // initialized in setup
+
+// VISUALIZATION CODE
+// ==================
 function drawVisualization(){
   background(245);
   drawBg();
@@ -45,24 +69,32 @@ function drawCounters() {
   noStroke();
   fill(255,255,255);
   textSize(9);
-  text('Sterne fangen.', 150, 340);
+  text('Sterne fangen.', 145, 340);
   textSize(7);
-  text('(Mit Hörner darunter sein)', 150, 350);
+  if(columns==3) {
+    text('(Mit Geiss drunter sein)', 145, 350);
+  } else {
+    text('(Mit Hörner drunter sein)', 145, 350);
+  }
   textSize(9);
-  text('← → Bewegen', 150, 368);
-  text('↑ Aus letzter', 150, 385);
-  text('Reihe greifen.', 158, 395);
+  text('← → Bewegen', 145, 368);
+  text('↑ Aus letzter', 145, 385);
+  text('Reihe greifen.', 153, 395);
    
-  
-  
   textSize(12);
   fill(255,255,0);
   text('Punkte: '+max(((starsCatchedHorn*10)+starsCatchedButt-starsMissed),0), 20,375);
   textSize(9);
-  text('Gefangen (Horn/Total): '+starsCatchedHorn+'/'+(starsCatchedHorn+starsCatchedButt), 20,390);
+  if (columns==3) {
+    text('Gefangen: '+starsCatchedHorn, 20,390);
+  } else {
+    text('Gefangen (Horn/Total): '+starsCatchedHorn+'/'+(starsCatchedHorn+starsCatchedButt), 20,390);
+  }
   
   fill(150,150,150);
   text('Verpasst: '+starsMissed, 320,390);
+  text('Start A: PgUp', 320,350);
+  text('Start B: PgDwn',320,360);
 }
 
 
@@ -74,6 +106,39 @@ function drawStarSprites() {
       drawStar(row, column);
     }  
   }  
+}
+
+function drawStar(row, column) {
+  let glowing = stars[row][column];
+  let pos = vizPos[row][column];
+  let x = pos.x;
+  let y = pos.y;
+  
+  noFill();
+  if(glowing) {
+    stroke(255,255,0);
+  } else {
+    stroke(150,150,150);
+  }
+  
+  //rect(x,y,20,20);
+  
+  beginShape();
+
+  vertex(x+15, y+ 2); // top spike
+  vertex(x+18, y+ 8); 
+  vertex(x+25, y+ 8); // upper right spike
+  vertex(x+20, y+12);
+  vertex(x+23, y+18); // lower right spike
+  vertex(x+15, y+13);
+  vertex(x+ 7, y+18); // lower left spike
+  vertex(x+10, y+12);
+  vertex(x+ 5, y+ 8); // upper left spike
+  vertex(x+12, y+ 8);
+  
+  endShape(CLOSE);
+  
+  
 }
 
 function drawGoatPosition(drawGoatPos, drawGoatDir, doColor) {
@@ -134,52 +199,20 @@ function drawGoat() {
   stroke(120,120,120);
   noFill();
   
-  drawGoatPosition(0,0,false);
-  drawGoatPosition(0,1,false);
-  
-  drawGoatPosition(1,0,false);
-  drawGoatPosition(1,1,false);
-  
+  drawGoatPosition(0,0,false);  
+  drawGoatPosition(1,0,false);  
   drawGoatPosition(2,0,false);
-  drawGoatPosition(2,1,false);
+  
+  // if (columns==6) {
+    drawGoatPosition(0,1,false);
+    drawGoatPosition(1,1,false);
+    drawGoatPosition(2,1,false);
+  // }
     
   drawGoatPosition(goatPos,goatDir,true);
     
   if (goatGlowHorn>0) goatGlowHorn--;
   if (goatGlowBody>0) goatGlowBody--;
-  
-}
-
-function drawStar(row, column) {
-  let glowing = stars[row][column];
-  let pos = vizPos[row][column];
-  let x = pos.x;
-  let y = pos.y;
-  
-  noFill();
-  if(glowing) {
-    stroke(255,255,0);
-  } else {
-    stroke(150,150,150);
-  }
-  
-  //rect(x,y,20,20);
-  
-  beginShape();
-
-  vertex(x+15, y+ 2); // top spike
-  vertex(x+18, y+ 8); 
-  vertex(x+25, y+ 8); // upper right spike
-  vertex(x+20, y+12);
-  vertex(x+23, y+18); // lower right spike
-  vertex(x+15, y+13);
-  vertex(x+ 7, y+18); // lower left spike
-  vertex(x+10, y+12);
-  vertex(x+ 5, y+ 8); // upper left spike
-  vertex(x+12, y+ 8);
-  
-  endShape(CLOSE);
-  
   
 }
 
@@ -227,11 +260,34 @@ function drawBg() {
   rect(225, 272, 46, 98);
 }
 
+// SETUP & DRAW
+// ============
+
+function reset(){
+  if(columns==3) {
+    vizPos = vizPos3;
+  } else {
+    vizPos = vizPos6;
+  }
+  
+  
+  // reset points
+  starsCatchedHorn = 0;
+  starsCatchedButt = 0;
+  starsMissed = 0;
+  
+  rowTemplate = Array(columns).fill(false);
+  stars = Array.from(Array(rows), () => [...rowTemplate]);
+  
+  frameCount=0;
+  if(!isLooping())
+    loop();
+}
+
 function setup() {
   createCanvas(400, 400);
   frameRate(FRAME_RATE);
-  stars[0][1] = true;
-  stars[0][3] = true;
+  reset();
 }
 
 function draw() {
@@ -239,14 +295,69 @@ function draw() {
   doGameLoop();
 }
 
-function GetGoatHornColumn() {
-  return goatPos*2 + goatDir;
+// GAME LOGIC CODE
+// ===============
+function doGameLoop() {
+  if (frameCount % STAR_MOVE_RATE == 0) {
+    handleLastStarRow();
+    moveStarsDown();
+    spawnNewStarRow();
+  }
+  if(frameCount>GAME_END_FRAMECOUNT) {
+    console.log('end');
+    noLoop();
+  }
 }
 
-function GetGoatButtColumn() {
-  return goatPos*2 + (1-goatDir);
+function keyPressed() {
+  let turned = false;
+  //console.log(keyCode);
+  if(keyCode == 37) {
+    left();
+  } else if (keyCode == 39) {
+    right();
+  } else if (keyCode == 38) {
+    up();
+  } else if (keyCode == 33) {
+    restartA();
+  } else if (keyCode == 34) {
+    restartB();
+  }
 }
 
+function left() {
+    turned = (goatDir==1);
+    goatDir=0;
+    if(!turned && goatPos>0) goatPos--;
+}
+
+function right() {
+    turned = (goatDir==0);
+    goatDir=1;    
+    let maxGoatPos = (columns/2)-1;
+    if(columns==3) 
+      maxGoatPos = 2;
+    if(!turned && goatPos< maxGoatPos) goatPos++;
+}
+
+function up() {
+    if (stars[rows-1][GetGoatHornColumn()]) {
+      starsCatchedHorn++;
+      stars[rows-1][GetGoatHornColumn()] = false;
+    }
+}
+
+function restartA() {
+    columns = 6;
+    reset();
+}
+
+function restartB() {
+    columns = 3;
+    reset();
+}
+
+// star movement actions
 function handleLastStarRow() {
   // nothing yet
   for (let column = 0; column < columns; column++) {
@@ -280,16 +391,6 @@ function clearNewRow() {
   }
 }
 
-function GetStarCount() {  
-  let count = 0; 
-  for (let row = 0; row < rows; row++) {
-    for (let column = 0; column < columns; column++) {
-      if (stars[row][column]) count++;
-    }
-  }
-  return count;
-}
-
 function spawnNewStarRow() {
   clearNewRow();
   
@@ -317,36 +418,24 @@ function spawnNewStarRow() {
   }
 }
 
-function doGameLoop() {
-  if (frameCount % STAR_MOVE_RATE == 0) {
-    handleLastStarRow();
-    moveStarsDown();
-    spawnNewStarRow();
-  }
-  if(frameCount>GAME_END_FRAMECOUNT) {
-    console.log('end');
-    noLoop();
-  }
+// calc stuff
+function GetGoatHornColumn() {
+  if (columns==3) return goatPos;
+  // columns == 6:
+  return goatPos*2 + goatDir;
 }
 
-function keyPressed() {
-  let turned = false;
-  // console.log(keyCode);
-  if(keyCode == 37) {
-    // left
-    turned = (goatDir==1);
-    goatDir=0;
-    if(!turned && goatPos>0) goatPos--;
-  } else if (keyCode == 39) {
-    // right
-    turned = (goatDir==0);
-    goatDir=1;    
-    if(!turned && goatPos<(columns/2)-1) goatPos++;
-  } else if (keyCode == 38) {
-    // Up
-    if (stars[rows-1][GetGoatHornColumn()]) {
-      starsCatchedHorn++;
-      stars[rows-1][GetGoatHornColumn()] = false;
+function GetGoatButtColumn() {
+  if (columns==3) return -1; // no butt column
+  return goatPos*2 + (1-goatDir);
+}
+
+function GetStarCount() {  
+  let count = 0; 
+  for (let row = 0; row < rows; row++) {
+    for (let column = 0; column < columns; column++) {
+      if (stars[row][column]) count++;
     }
   }
+  return count;
 }
