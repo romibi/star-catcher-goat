@@ -1,4 +1,4 @@
-= GOAT STAR CATCHER =
+= STAR CATCHER GOAT =
 
 Catch Stars as a Goat
 
