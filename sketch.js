@@ -5,6 +5,23 @@ let STAR_TIMER_LIKELYHOOD = 0.0005; // star spawn likely hood increase over time
 let FORCE_STAR_SPAWN_MIN = 2; // if 2 or less stars 1 star spawns 100%
 let MAX_STARS = 2; // max stars per row
 
+// LED Stuff
+// mixed content error: https://support.mozilla.org/de/kb/Wie-beeinflussen-Inhalte-die-nicht-sicher-sind-meine-Sicherheit
+STAR_COLOR = 'FF9000';
+
+HUB_ADDR_STAR_1 = '192.168.1.107';
+HUB_ADDR_STAR_2 = '';
+HUB_ADDR_STAR_3 = '';
+HUB_ADDR_STAR_4 = '';
+HUB_ADDR_STAR_5 = '';
+HUB_ADDR_STAR_6 = '';
+
+// change color of segment 1 (0) to green: http://192.168.1.107/win&SM=0&SB=255&CL=H00FF00
+API_ADDR = '/win';
+API_ARG_SEGMENT = '&SM=';
+API_ARG_BRIGHTNES = '&SB=';
+API_ARG_COLOR = '&CL=H'
+
 // speed
 let FRAME_RATE = 10; // fps
 let STAR_MOVE_RATE = 10; // stars move every x frames
@@ -52,6 +69,17 @@ let vizPos6 = [
   [ {x:40,y:200}, {x:70,y:200}, {x:170,y:200}, {x:200,y:200}, {x:300,y:200}, {x:330,y:200}]
 ]
 
+// LED info
+let ledSegmentMap = [
+  [ {hub: 1, segment: 2}, {hub: 1, segment: 3}, {hub: 2, segment: 2}, {hub: 2, segment: 3}, {hub: 3, segment: 2}, {hub: 3, segment: 3}],
+  [ {hub: 1, segment: 1}, {hub: 1, segment: 4}, {hub: 2, segment: 1}, {hub: 2, segment: 4}, {hub: 3, segment: 1}, {hub: 3, segment: 4}],
+  [ {hub: 1, segment: 0}, {hub: 1, segment: 5}, {hub: 2, segment: 0}, {hub: 2, segment: 5}, {hub: 3, segment: 0}, {hub: 3, segment: 5}],
+  
+  [ {hub: 4, segment: 2}, {hub: 4, segment: 3}, {hub: 5, segment: 2}, {hub: 5, segment: 3}, {hub: 6, segment: 2}, {hub: 6, segment: 3}],
+  [ {hub: 4, segment: 1}, {hub: 4, segment: 4}, {hub: 5, segment: 1}, {hub: 5, segment: 4}, {hub: 6, segment: 1}, {hub: 6, segment: 4}],
+  [ {hub: 4, segment: 0}, {hub: 4, segment: 5}, {hub: 5, segment: 0}, {hub: 5, segment: 5}, {hub: 6, segment: 0}, {hub: 6, segment: 5}]
+]
+
 let vizPos; // initialized in setup
 
 // VISUALIZATION CODE
@@ -63,6 +91,14 @@ function drawVisualization(){
   drawStarSprites();
   drawGoat();
   drawCounters();
+  
+  // Highlight Demo Stars
+  //stroke('red');
+  //strokeWeight(4);
+  //noFill();
+  //rect(40,60,30,45);
+  //strokeWeight(1)
+  
 }
 
 function drawCounters() {
@@ -96,7 +132,6 @@ function drawCounters() {
   text('Start A: PgUp', 320,350);
   text('Start B: PgDwn',320,360);
 }
-
 
 function drawStarSprites() {
   let currentRow = 0;
@@ -260,6 +295,76 @@ function drawBg() {
   rect(225, 272, 46, 98);
 }
 
+// LED control
+
+function GetStarHub(row, column) {
+  let segment = ledSegmentMap[row][column];
+  
+  switch (segment.hub) {
+    case 1: 
+      return HUB_ADDR_STAR_1;
+    case 2:
+      return HUB_ADDR_STAR_2;
+    case 3:
+      return HUB_ADDR_STAR_3;
+    case 4:
+      return HUB_ADDR_STAR_4;
+    case 5:
+      return HUB_ADDR_STAR_5;
+    case 6:
+      return HUB_ADDR_STAR_6;
+  }
+  return '';
+}
+
+function GetLedApiUrl(row, column, starBright, starColour) {
+  let hub = GetStarHub(row, column);
+  if (hub == '') return '';
+  
+  let segment = ledSegmentMap[row][column];
+  
+  if(segment.bright == starBright && segment.colour == starColour) return '';
+  
+  segment.bright = starBright;
+  segment.colour = starColour;
+  
+  // API_ADDR = '/win';
+  // API_ARG_SEGMENT = '&SM=';
+  // API_ARG_BRIGHTNES = '&SB=';
+  // API_ARG_COLOR = '&CL=H' // rrggbb
+  
+  return 'http://'+hub+API_ADDR+API_ARG_SEGMENT+segment.segment+API_ARG_BRIGHTNES+starBright+API_ARG_COLOR+starColour;
+}
+
+function SetStarLed(row, column) {  
+  let glowing = stars[row][column];
+  
+  starBright = 0;
+  if (glowing) starBright = 255;
+  
+  let apiCall = GetLedApiUrl(row, column, starBright, STAR_COLOR);
+  
+  if (apiCall == '') return;
+  
+  console.log('Calling '+apiCall);
+  
+  var request = $.ajax({
+    url: apiCall,
+    method: "GET",
+    timeout: 5000
+  });
+}
+
+function UpdateLEDs() {
+  let currentRow = 0;
+  let currentColumn = 0;
+  for (let row = 0; row < rows; row++) {
+    for (let column = 0; column < columns; column++) {
+      SetStarLed(row, column);
+    }  
+  } 
+}
+
 // SETUP & DRAW
 // ============
 
@@ -268,8 +373,7 @@ function reset(){
     vizPos = vizPos3;
   } else {
     vizPos = vizPos6;
-  }
-  
+  }  
   
   // reset points
   starsCatchedHorn = 0;
@@ -291,8 +395,9 @@ function setup() {
 }
 
 function draw() {
-  drawVisualization();
-  doGameLoop();
+  drawVisualization();  
+  UpdateLEDs();
+  doGameLoop();  
 }
 
 // GAME LOGIC CODE
