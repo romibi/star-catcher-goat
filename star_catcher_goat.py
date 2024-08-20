@@ -11,11 +11,11 @@ if not pg.image.get_extended():
     raise SystemExit("Sorry, extended image module required")
 
 # difficulty settings
-STAR_BASE_LIKELYHOOD = 0.3; # at start 30% chance of 1 star. (15% for 2nd star)
-STAR_MAX_LIKELYHOOD = 0.95; # max chance of 95% for 1 star (47.5% for 2nd star)
-STAR_TIMER_LIKELYHOOD = 0.0005; # star spawn likely hood increase over time
-FORCE_STAR_SPAWN_MIN = 2; # if 2 or less stars 1 star spawns 100%
-MAX_STARS = 2; # max stars per row
+STAR_BASE_LIKELYHOOD = 0.3 # at start 30% chance of 1 star. (15% for 2nd star)
+STAR_MAX_LIKELYHOOD = 0.95 # max chance of 95% for 1 star (47.5% for 2nd star)
+STAR_TIMER_LIKELYHOOD = 0.0005 # star spawn likely hood increase over time
+FORCE_STAR_SPAWN_MIN = 2 # if 2 or less stars 1 star spawns 100%
+MAX_STARS = 2 # max stars per row
 
 # LED Stuff
 STAR_COLOR = 'FF9000';
@@ -43,8 +43,8 @@ STAR_STOP_SPAWN_FRAMECOUNT = 1120; # no more stars after 112 seconds
 GAME_END_FRAMECOUNT = 1200; # stop game loop after 120 seconds
 
 # how many stars? 6x3 or 6x6
-rows = 6;
-columns = 6; # code works with 3 or 6 columns
+GAME_ROWS = 6;
+GAME_COLUMNS = 6; # code works with 3 or 6 columns
 
 SCREENRECT = pg.Rect(0, 0, 1280, 720)
 
@@ -86,7 +86,7 @@ def load_sound(file):
 # // points
 # let starsCatchedHorn = 0;
 # let starsCatchedButt = 0;
-# let starsMissed = 0;
+GAME_StarsMissed = 0;
 
 # // vizPos für 3 columns
 # let vizPos3 = [
@@ -444,43 +444,6 @@ vizGoatRects = [ Rect(72, 540, 64, 64), Rect(98, 540, 64, 64), Rect(306, 540, 64
 #   doGameLoop();  
 # }
 
-# // GAME LOGIC CODE
-# // ===============
-# function doGameLoop() {
-#   if (frameCount % STAR_MOVE_RATE == 0) {
-#     handleLastStarRow();
-#     moveStarsDown();
-#     spawnNewStarRow();
-#   }
-#   if(frameCount>GAME_END_FRAMECOUNT) {
-#     console.log('end');
-#     noLoop();
-#   }
-# }
-
-# function keyPressed() {
-#   let turned = false;
-#   //console.log(keyCode);
-#   if(keyCode == 37) {
-#     left();
-#   } else if (keyCode == 39) {
-#     right();
-#   } else if (keyCode == 38) {
-#     up();
-#   } else if (keyCode == 33) {
-#     restartA();
-#   } else if (keyCode == 34) {
-#     restartB();
-#   }
-# }
-
-# function up() {
-#     if (stars[rows-1][GetGoatHornColumn()]) {
-#       starsCatchedHorn++;
-#       stars[rows-1][GetGoatHornColumn()] = false;
-#     }
-# }
-
 # function restartA() {
 #     columns = 6;
 #     reset();
@@ -491,33 +454,12 @@ vizGoatRects = [ Rect(72, 540, 64, 64), Rect(98, 540, 64, 64), Rect(306, 540, 64
 #     reset();
 # }
 
-# // star movement actions
-# function handleLastStarRow() {
-#   // nothing yet
-#   for (let column = 0; column < columns; column++) {
-#     let isStar = stars[rows-1][column];
-#     if (!isStar) continue;
-    
-#     if(column==GetGoatHornColumn()) {
-#       goatGlowHorn=5;
-#       starsCatchedHorn++;
-#     } else if(column==GetGoatButtColumn()) {
-#       goatGlowBody=5;
-#       starsCatchedButt++;
-#     } else {
-#       starsMissed++;
-#     }
-#   }
-#   console.log('starsCatchedHorn: '+starsCatchedHorn+', starsCatchedButt: '+starsCatchedButt+', starsMissed: '+starsMissed);
-# }
-
 def spawnNewStarRow(stars, stargroups):
     if(FRAME_COUNT>STAR_STOP_SPAWN_FRAMECOUNT):
         return
 
     if FRAME_COUNT % STAR_MOVE_RATE != 0:
         return
-
 
     spawnStar = False
     starLikelyhood = min(STAR_BASE_LIKELYHOOD + (FRAME_COUNT*STAR_TIMER_LIKELYHOOD), STAR_MAX_LIKELYHOOD);
@@ -535,21 +477,10 @@ def spawnNewStarRow(stars, stargroups):
         #print(f"likelyHood: {starLikelyhood}, draw: {randomDraw}, spawn: {spawnStar}")
 
         if spawnStar:
-            spawnColumn = random.randint(0, columns-1);
+            spawnColumn = random.randint(0, GAME_COLUMNS-1);
             #print(f"Spawning at {spawnColumn}")
             Star(spawnColumn, stargroups)
 
-# // calc stuff
-# function GetGoatHornColumn() {
-#   if (columns==3) return goatPos;
-#   // columns == 6:
-#   return goatPos*2 + goatDir;
-# }
-
-# function GetGoatButtColumn() {
-#   if (columns==3) return -1; // no butt column
-#   return goatPos*2 + (1-goatDir);
-# }
 
 class Star(pg.sprite.Sprite):
 
@@ -567,15 +498,29 @@ class Star(pg.sprite.Sprite):
         self.facing = 0
         self.frame = 0
 
+    @property
+    def hangingLow(self):
+        return self.gridPosY>=(GAME_ROWS-1)
+
     def fall(self):
         self.gridPosY += 1
-        if self.gridPosY < 6:
+        if self.gridPosY < GAME_ROWS:
             self.rect = vizRects[self.gridPosY][self.gridPosX]
         else:
             self.land()
 
-    def land(self):
-        # TODO: check goat position and calculate points
+
+    def land(self, player=None):
+        global GAME_StarsMissed
+
+        if self.frame % STAR_MOVE_RATE != 0:
+            return
+
+        catched = False
+        if not player == None:
+            catched = player.CatchStarPassive(self)
+        if not catched:
+            GAME_StarsMissed += 1
         self.kill()
 
 
@@ -595,8 +540,10 @@ class Player(pg.sprite.Sprite):
 
     images: List[pg.Surface] = []
     gridPos = 0
-    hornGlowing = False
-    bodyGlowing = False
+    hornGlowIntensity = 0
+    bodyGlowIntensity = 0
+    starsCatchedHorn = 0
+    starsCatchedButt = 0
 
     def __init__(self, *groups):
         pg.sprite.Sprite.__init__(self, *groups)
@@ -611,16 +558,20 @@ class Player(pg.sprite.Sprite):
 
     def updateImage(self):
         if self.facing < 0:
-            if self.hornGlowing:
+            if self.HornGlowing and self.BodyGlowing:
+                self.image = self.images[6]
+            elif self.HornGlowing:
                 self.image = self.images[2]
-            elif self.bodyGlowing:
+            elif self.BodyGlowing:
                 self.image = self.images[4]
             else:
                 self.image = self.images[0]
         elif self.facing > 0:
-            if self.hornGlowing:
+            if self.HornGlowing and self.BodyGlowing:
+                self.image = self.images[7]
+            elif self.HornGlowing:
                 self.image = self.images[3]
-            elif self.bodyGlowing:
+            elif self.BodyGlowing:
                 self.image = self.images[5]
             else:
                 self.image = self.images[1]
@@ -629,14 +580,20 @@ class Player(pg.sprite.Sprite):
         self.rect = vizGoatRects[int(self.gridPos*2)+max(self.facing,0)]
 
     def moveInGrid(self):        
-        maxGoatPos = round(columns/2)-1
-        if columns == 3:
+        maxGoatPos = round(GAME_COLUMNS/2)-1
+        if GAME_COLUMNS == 3:
             maxGoatPos = 2
 
         if self.facing < 0:
             self.gridPos = max(self.gridPos-1,0)
         elif self.facing > 0:
             self.gridPos = min(self.gridPos+1,maxGoatPos)
+
+
+    def update(self):
+        self.hornGlowIntensity = max(self.hornGlowIntensity-1,0)
+        self.bodyGlowIntensity = max(self.bodyGlowIntensity-1,0)
+        self.updateImage()
 
 
     def move(self, direction):
@@ -654,9 +611,59 @@ class Player(pg.sprite.Sprite):
         self.updateImage()
         self.updateRect()
 
-    def jump(self):
-        # todo
+
+    def HornGlow(self):
+        self.hornGlowIntensity = 20
+        self.updateImage()
+
+
+    def BodyGlow(self):
+        self.bodyGlowIntensity = 20
+        self.updateImage()
+
+
+    @property
+    def HornGlowing(self):
+        return self.hornGlowIntensity>0
+
+
+    @property
+    def BodyGlowing(self):
+        return self.bodyGlowIntensity>0
+
+    @property
+    def HornColumn(self):
+        if GAME_COLUMNS == 3:
+            return self.gridPos
+        return self.gridPos * 2 + max(self.facing,0)
+
+
+    @property
+    def ButtColumn(self):
+        if GAME_COLUMNS == 3:
+            return -1 # no butt column
+        return self.gridPos*2 + (1-max(self.facing,0))
+
+
+    def jump(self, stars):
+        for star in stars:
+            if star.gridPosX == self.HornColumn:
+                self.starsCatchedHorn += 1
+                self.HornGlow()
+                print(f"Catching Star: x:{star.gridPosX} y:{star.gridPosX}")
+                star.kill()
         return
+
+    def CatchStarPassive(self, star):
+        if star.gridPosX == self.HornColumn:
+            self.starsCatchedHorn += 1
+            self.HornGlow()
+            return True
+        elif star.gridPosX == self.ButtColumn:
+            self.starsCatchedButt += 1
+            self.BodyGlow()
+            return True
+        return False
 
 
 def main(winstyle=0):
@@ -677,7 +684,7 @@ def main(winstyle=0):
     # Load images, assign to sprite classes
     # (do this before the classes are used, after screen setup)
     
-    Player.images = [load_image(im) for im in ("goatL.png", "goatR.png", "goatLHorn.png", "goatRHorn.png", "goatLBody.png", "goatRBody.png")]
+    Player.images = [load_image(im) for im in ("goatL.png", "goatR.png", "goatLHorn.png", "goatRHorn.png", "goatLBody.png", "goatRBody.png", "goatLFullGlow.png", "goatRFullGlow.png")]
     img = load_image("star.png")
     Star.images = [img]
 
@@ -726,13 +733,18 @@ def main(winstyle=0):
             if event.type == pg.KEYDOWN and event.key == pg.K_LEFT:
                 player.move(-1)
             if event.type == pg.KEYDOWN and event.key == pg.K_UP:
-                player.jump()
+                player.jump([star for star in stars if star.hangingLow])
 
         keystate = pg.key.get_pressed()
 
         # clear/erase the last drawn sprites
         #all.clear(screen, background)
         all.clear(screen, background)
+
+        # make stars land on player before update
+        for star in stars:
+            if star.hangingLow:
+                star.land(player)
 
         # update all the sprites
         all.update()
@@ -750,10 +762,11 @@ def main(winstyle=0):
         dirty = all.draw(screen)
         pg.display.update(dirty)
 
-        # cap the framerate at 40fps. Also called 40HZ or 40 times per second.
-
         spawnNewStarRow(stars, (stars, all))
 
+        #print(f"starsCatchedHorn: {player.starsCatchedHorn}, starsCatchedButt:  {player.starsCatchedButt}, starsMissed: {GAME_StarsMissed}");
+
+        # cap the framerate at 10fps. Also called 10HZ or 10 times per second.
         clock.tick(FRAME_RATE)
 
     if pg.mixer:
