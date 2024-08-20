@@ -129,23 +129,6 @@ vizGoatRects = [ Rect(84, 540, 64, 64), Rect(110, 540, 64, 64), Rect(318, 540, 6
 
 # // VISUALIZATION CODE
 # // ==================
-# function drawVisualization(){
-#   background(245);
-#   drawBg();
-#   background('rgba(0, 0, 0, 0.6)');
-#   drawStarSprites();
-#   drawGoat();
-#   drawCounters();
-  
-#   // Highlight Demo Stars
-#   //stroke('red');
-#   //strokeWeight(4);
-#   //noFill();
-#   //rect(40,60,30,45);
-#   //strokeWeight(1)
-  
-# }
-
 # function drawCounters() {
 #   noStroke();
 #   fill(255,255,255);
@@ -176,50 +159,6 @@ vizGoatRects = [ Rect(84, 540, 64, 64), Rect(110, 540, 64, 64), Rect(318, 540, 6
 #   text('Verpasst: '+starsMissed, 320,390);
 #   text('Start A: PgUp', 320,350);
 #   text('Start B: PgDwn',320,360);
-# }
-
-# function drawBgWindow(x, y) {  
-#   fill(255,255,255);
-#   stroke(180,180,180);
-  
-#   rect(x+30,y,30,20);
-#   rect(x+30,y+20,30,20);
-#   rect(x+30,y+40,30,20);
-#   rect(x+60,y,30,20);
-#   rect(x+60,y+20,30,20);
-#   rect(x+60,y+40,30,20);
-  
-  
-#   fill(80,140,80);
-#   noStroke();
-#   rect(x, y,30,60);
-#   rect(x+90, y,30,60);
-# }
-
-# function drawBg() {
-  
-#   // Windows top row
-#   drawBgWindow(10,40);
-#   drawBgWindow(140,40);
-#   drawBgWindow(270,40);
-  
-#   // windows middle row
-#   drawBgWindow(10,160);
-#   drawBgWindow(140,160);
-#   drawBgWindow(270,160);
-    
-#   // window bottom small
-#   fill(255,255,255);
-#   stroke(180,180,180);
-#   rect(335,280,40,50);
-    
-#   // window bottom big
-#   stroke(180,80,0);
-#   rect(30,280,110,70);
-  
-#   // door
-#   fill(180,80,0);
-#   rect(225, 272, 46, 98);
 # }
 
 # // LED control
@@ -637,9 +576,6 @@ def main(winstyle=0):
         #player.move(direction)
         #jumping = keystate[pg.K_UP]
         #player.jumping = jumping
-
-        # Create new star
-        # todo
         
         # draw the scene
         dirty = all.draw(screen)
