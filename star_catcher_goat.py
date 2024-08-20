@@ -59,7 +59,8 @@ def load_image(file):
         surface = pg.image.load(file)
     except pg.error:
         raise SystemExit(f'Could not load image "{file}" {pg.get_error()}')
-    return surface.convert()
+    #surface = surface.convert()
+    return surface.convert_alpha()
 
 
 def load_sound(file):
@@ -101,17 +102,17 @@ GAME_StarsMissed = 0;
 
 # // vizPos für 6 columns
 vizRects6 = [
-   [ Rect(72, 72, 32, 32), Rect(126, 72, 32, 32), Rect(306, 72, 32, 32), Rect(360, 72, 32, 32), Rect(540, 72, 32, 32), Rect(594, 72, 32, 32)],
-   [ Rect(72, 108, 32, 32), Rect(126, 108, 32, 32), Rect(306, 108, 32, 32), Rect(360, 108, 32, 32), Rect(540, 108, 32, 32), Rect(594, 108, 32, 32)],
-   [ Rect(72, 144, 32, 32), Rect(126, 144, 32, 32), Rect(306, 144, 32, 32), Rect(360, 144, 32, 32), Rect(540, 144, 32, 32), Rect(594, 144, 32, 32)],
+   [ Rect(84, 72, 32, 32), Rect(138, 72, 32, 32), Rect(318, 72, 32, 32), Rect(372, 72, 32, 32), Rect(552, 72, 32, 32), Rect(606, 72, 32, 32)],
+   [ Rect(84, 108, 32, 32), Rect(138, 108, 32, 32), Rect(318, 108, 32, 32), Rect(372, 108, 32, 32), Rect(552, 108, 32, 32), Rect(606, 108, 32, 32)],
+   [ Rect(84, 144, 32, 32), Rect(138, 144, 32, 32), Rect(318, 144, 32, 32), Rect(372, 144, 32, 32), Rect(552, 144, 32, 32), Rect(606, 144, 32, 32)],
 
-   [ Rect(72, 288, 32, 32), Rect(126, 288, 32, 32), Rect(306, 288, 32, 32), Rect(360, 288, 32, 32), Rect(540, 288, 32, 32), Rect(594, 288, 32, 32)],
-   [ Rect(72, 324, 32, 32), Rect(126, 324, 32, 32), Rect(306, 324, 32, 32), Rect(360, 324, 32, 32), Rect(540, 324, 32, 32), Rect(594, 324, 32, 32)],
-   [ Rect(72, 360, 32, 32), Rect(126, 360, 32, 32), Rect(306, 360, 32, 32), Rect(360, 360, 32, 32), Rect(540, 360, 32, 32), Rect(594, 360, 32, 32)]
+   [ Rect(84, 288, 32, 32), Rect(138, 288, 32, 32), Rect(318, 288, 32, 32), Rect(372, 288, 32, 32), Rect(552, 288, 32, 32), Rect(606, 288, 32, 32)],
+   [ Rect(84, 324, 32, 32), Rect(138, 324, 32, 32), Rect(318, 324, 32, 32), Rect(372, 324, 32, 32), Rect(552, 324, 32, 32), Rect(606, 324, 32, 32)],
+   [ Rect(84, 360, 32, 32), Rect(138, 360, 32, 32), Rect(318, 360, 32, 32), Rect(372, 360, 32, 32), Rect(552, 360, 32, 32), Rect(606, 360, 32, 32)]
 ]
 vizRects = vizRects6
 
-vizGoatRects = [ Rect(72, 540, 64, 64), Rect(98, 540, 64, 64), Rect(306, 540, 64, 64), Rect(332, 540, 64, 64), Rect(540, 540, 64, 64), Rect(566, 540, 64, 64)]
+vizGoatRects = [ Rect(84, 540, 64, 64), Rect(110, 540, 64, 64), Rect(318, 540, 64, 64), Rect(344, 540, 64, 64), Rect(552, 540, 64, 64), Rect(578, 540, 64, 64)]
 
 # // LED info
 # let ledSegmentMap = [
@@ -175,124 +176,6 @@ vizGoatRects = [ Rect(72, 540, 64, 64), Rect(98, 540, 64, 64), Rect(306, 540, 64
 #   text('Verpasst: '+starsMissed, 320,390);
 #   text('Start A: PgUp', 320,350);
 #   text('Start B: PgDwn',320,360);
-# }
-
-# function drawStarSprites() {
-#   let currentRow = 0;
-#   let currentColumn = 0;
-#   for (let row = 0; row < rows; row++) {
-#     for (let column = 0; column < columns; column++) {
-#       drawStar(row, column);
-#     }  
-#   }  
-# }
-
-# function drawStar(row, column) {
-#   let glowing = stars[row][column];
-#   let pos = vizPos[row][column];
-#   let x = pos.x;
-#   let y = pos.y;
-  
-#   noFill();
-#   if(glowing) {
-#     stroke(255,255,0);
-#   } else {
-#     stroke(150,150,150);
-#   }
-  
-#   //rect(x,y,20,20);
-  
-#   beginShape();
-
-#   vertex(x+15, y+ 2); // top spike
-#   vertex(x+18, y+ 8); 
-#   vertex(x+25, y+ 8); // upper right spike
-#   vertex(x+20, y+12);
-#   vertex(x+23, y+18); // lower right spike
-#   vertex(x+15, y+13);
-#   vertex(x+ 7, y+18); // lower left spike
-#   vertex(x+10, y+12);
-#   vertex(x+ 5, y+ 8); // upper left spike
-#   vertex(x+12, y+ 8);
-  
-#   endShape(CLOSE);
-  
-  
-# }
-
-# function drawGoatPosition(drawGoatPos, drawGoatDir, doColor) {
-#   let y = 310;
-#   let x = 0;
-  
-#   if (drawGoatPos == 0) {
-#     x = 50 + drawGoatDir*10;
-#     y -= drawGoatDir*10;
-#   } else if (drawGoatPos == 1) {
-#     x = 160 + drawGoatDir*10;
-#     y -= (20 + drawGoatDir*10);
-#   } else if (drawGoatPos == 2) {
-#     x = 300 + drawGoatDir*10;
-#     y -= (40 + drawGoatDir*10);
-#   }
-  
-#   if(doColor) {
-#     stroke(255, 255,255-(goatGlowBody*50));
-#     noFill();
-#   }
-  
-#   rect(x,y,45,25); // body  
-    
-#   if(doColor) {
-#     stroke(255,255,255);
-#   }
-  
-#   rect(x,y+25,2,15);
-#   rect(x+7,y+25,2,15);
-#   rect(x+37,y+25,2,15);
-#   rect(x+43,y+25,2,15);
-  
-#   if (drawGoatDir == 0) {
-#     // looking left
-#     rect(x,y-20,15,20); // head
-    
-#     if(doColor) {
-#       stroke(255, 255,255-(goatGlowHorn*50));
-#     }
-    
-#     rect(x-2,y-30,3,10); // horn
-#     rect(x+14,y-30,3,10); // horn
-#   } else {
-#     // looking right
-#     rect(x+30,y-20,15,20); // head
-    
-#     if(doColor) {
-#       stroke(255, 255,255-(goatGlowHorn*50));
-#     }
-    
-#     rect(x+28,y-30,3,10); // horn
-#     rect(x+44,y-30,3,10); // horn
-#   }
-# }
-
-# function drawGoat() {  
-#   stroke(120,120,120);
-#   noFill();
-  
-#   drawGoatPosition(0,0,false);  
-#   drawGoatPosition(1,0,false);  
-#   drawGoatPosition(2,0,false);
-  
-#   // if (columns==6) {
-#     drawGoatPosition(0,1,false);
-#     drawGoatPosition(1,1,false);
-#     drawGoatPosition(2,1,false);
-#   // }
-    
-#   drawGoatPosition(goatPos,goatDir,true);
-    
-#   if (goatGlowHorn>0) goatGlowHorn--;
-#   if (goatGlowBody>0) goatGlowBody--;
-  
 # }
 
 # function drawBgWindow(x, y) {  
@@ -695,12 +578,12 @@ def main(winstyle=0):
     pg.mouse.set_visible(0)
 
     # create the background, tile the bgd image
-    #bgdtile = load_image("background.gif")
+    bgdtile = load_image("background.png")
     background = pg.Surface(SCREENRECT.size)
-    #for x in range(0, SCREENRECT.width, bgdtile.get_width()):
-    #    background.blit(bgdtile, (x, 0))
-    #screen.blit(background, (0, 0))
-    #pg.display.flip()
+    for x in range(0, SCREENRECT.width, bgdtile.get_width()):
+        background.blit(bgdtile, (x, 0))
+    screen.blit(background, (0, 0))
+    pg.display.flip()
 
 
     # Create Some Starting Values
