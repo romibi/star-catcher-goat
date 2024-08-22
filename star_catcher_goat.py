@@ -44,7 +44,7 @@ STAR_MOVE_RATE = 10; # stars move every x frames
 STAR_STOP_SPAWN_FRAMECOUNT = 1120; # no more stars after 112 seconds
 GAME_END_FRAMECOUNT = 1200; # stop game loop after 120 seconds
 
-# how many stars? 6x3 or 6x6
+# how many stars? 3x6 or 6x6
 GAME_ROWS = 6;
 GAME_COLUMNS = 6; # code works with 3 or 6 columns
 
@@ -87,20 +87,20 @@ def load_sound(file):
 # // missed points (other points in plater class)
 GAME_StarsMissed = 0;
 
-# // vizPos für 3 columns
-# let vizPos3 = [
-#   [ {x:40,y:40}                           , {x:200,y:40}, {x:300,y:40}              ],
-#   [              {x:70,y:60}, {x:170,y:60}                            , {x:330,y:60}],
-#   [ {x:40,y:80},                            {x:200,y:80}, {x:300,y:80}              ],
-  
-#   [               {x:70,y:160},                {x:200,y:160},                {x:330,y:160}],
-#   [ {x:40,y:180},               {x:170,y:180},                {x:300,y:180}               ],
-#   [               {x:70,y:200},                {x:200,y:200},                {x:330,y:200}]
-# ]
+# vizPos für 3 columns
+vizRects3 = [
+   [ Rect(84,  72, 32, 32),                                                 Rect(372,  72, 32, 32), Rect(552,  72, 32, 32)                        ],
+   [                        Rect(138, 108, 32, 32), Rect(318, 108, 32, 32),                                                 Rect(606, 108, 32, 32)],
+   [ Rect(84, 144, 32, 32),                                                 Rect(372, 144, 32, 32), Rect(552, 144, 32, 32)                        ],
 
-# // vizPos für 6 columns
+   [                        Rect(138, 288, 32, 32),                         Rect(372, 288, 32, 32),                         Rect(606, 288, 32, 32)],
+   [ Rect(84, 324, 32, 32),                         Rect(318, 324, 32, 32),                         Rect(552, 324, 32, 32)                        ],
+   [                        Rect(138, 360, 32, 32),                         Rect(372, 360, 32, 32),                         Rect(606, 360, 32, 32)]
+]
+
+# vizPos für 6 columns
 vizRects6 = [
-   [ Rect(84, 72, 32, 32), Rect(138, 72, 32, 32), Rect(318, 72, 32, 32), Rect(372, 72, 32, 32), Rect(552, 72, 32, 32), Rect(606, 72, 32, 32)],
+   [ Rect(84,  72, 32, 32), Rect(138,  72, 32, 32), Rect(318,  72, 32, 32), Rect(372,  72, 32, 32), Rect(552,  72, 32, 32), Rect(606,  72, 32, 32)],
    [ Rect(84, 108, 32, 32), Rect(138, 108, 32, 32), Rect(318, 108, 32, 32), Rect(372, 108, 32, 32), Rect(552, 108, 32, 32), Rect(606, 108, 32, 32)],
    [ Rect(84, 144, 32, 32), Rect(138, 144, 32, 32), Rect(318, 144, 32, 32), Rect(372, 144, 32, 32), Rect(552, 144, 32, 32), Rect(606, 144, 32, 32)],
 
@@ -108,12 +108,33 @@ vizRects6 = [
    [ Rect(84, 324, 32, 32), Rect(138, 324, 32, 32), Rect(318, 324, 32, 32), Rect(372, 324, 32, 32), Rect(552, 324, 32, 32), Rect(606, 324, 32, 32)],
    [ Rect(84, 360, 32, 32), Rect(138, 360, 32, 32), Rect(318, 360, 32, 32), Rect(372, 360, 32, 32), Rect(552, 360, 32, 32), Rect(606, 360, 32, 32)]
 ]
-vizRects = vizRects6
 
 vizGoatRects = [ Rect(84, 540, 64, 64), Rect(110, 540, 64, 64), Rect(318, 540, 64, 64), Rect(344, 540, 64, 64), Rect(552, 540, 64, 64), Rect(578, 540, 64, 64)]
 
-# // LED info
-ledSegmentMap = [
+# LED info
+# Segment map for when only halve the stars are wired:
+#ledSegmentMap3 = [
+#   [ {"hub": 1, "segment": 2},                                                     {"hub": 2, "segment": 2}, {"hub": 3, "segment": 2}                          ],
+#   [                           {"hub": 1, "segment": 1}, {"hub": 2, "segment": 1},                                                     {"hub": 3, "segment": 1}],
+#   [ {"hub": 1, "segment": 0},                                                     {"hub": 2, "segment": 0}, {"hub": 3, "segment": 0}                          ],
+#
+#   [                           {"hub": 4, "segment": 2},                           {"hub": 5, "segment": 2},                           {"hub": 6, "segment": 2}],
+#   [ {"hub": 4, "segment": 1},                           {"hub": 5, "segment": 1},                           {"hub": 6, "segment": 1},                         ],
+#   [                           {"hub": 4, "segment": 0},                           {"hub": 5, "segment": 0},                           {"hub": 6, "segment": 0}]
+#]
+
+# Segment map for when 6x6 stars are wired but game is in 3x6 mode:
+ledSegmentMap3 = [
+   [ {"hub": 1, "segment": 2},                                                     {"hub": 2, "segment": 3}, {"hub": 3, "segment": 2}                          ],
+   [                           {"hub": 1, "segment": 4}, {"hub": 2, "segment": 1},                                                     {"hub": 3, "segment": 4}],
+   [ {"hub": 1, "segment": 0},                                                     {"hub": 2, "segment": 5}, {"hub": 3, "segment": 0}                          ],
+
+   [                           {"hub": 4, "segment": 3},                           {"hub": 5, "segment": 3},                           {"hub": 6, "segment": 3}],
+   [ {"hub": 4, "segment": 1},                           {"hub": 5, "segment": 1},                           {"hub": 6, "segment": 1},                         ],
+   [                           {"hub": 4, "segment": 5},                           {"hub": 5, "segment": 5},                           {"hub": 6, "segment": 5}]
+]
+
+ledSegmentMap6 = [
    [ {"hub": 1, "segment": 2}, {"hub": 1, "segment": 3}, {"hub": 2, "segment": 2}, {"hub": 2, "segment": 3}, {"hub": 3, "segment": 2}, {"hub": 3, "segment": 3}],
    [ {"hub": 1, "segment": 1}, {"hub": 1, "segment": 4}, {"hub": 2, "segment": 1}, {"hub": 2, "segment": 4}, {"hub": 3, "segment": 1}, {"hub": 3, "segment": 4}],
    [ {"hub": 1, "segment": 0}, {"hub": 1, "segment": 5}, {"hub": 2, "segment": 0}, {"hub": 2, "segment": 5}, {"hub": 3, "segment": 0}, {"hub": 3, "segment": 5}],
@@ -123,41 +144,8 @@ ledSegmentMap = [
    [ {"hub": 4, "segment": 0}, {"hub": 4, "segment": 5}, {"hub": 5, "segment": 0}, {"hub": 5, "segment": 5}, {"hub": 6, "segment": 0}, {"hub": 6, "segment": 5}]
 ]
 
-# let vizPos; // initialized in setup
-
-# // VISUALIZATION CODE
-# // ==================
-# function drawCounters() {
-#   noStroke();
-#   fill(255,255,255);
-#   textSize(9);
-#   text('Sterne fangen.', 145, 340);
-#   textSize(7);
-#   if(columns==3) {
-#     text('(Mit Geiss drunter sein)', 145, 350);
-#   } else {
-#     text('(Mit Hörner drunter sein)', 145, 350);
-#   }
-#   textSize(9);
-#   text('← → Bewegen', 145, 368);
-#   text('↑ Aus letzter', 145, 385);
-#   text('Reihe greifen.', 153, 395);
-   
-#   textSize(12);
-#   fill(255,255,0);
-#   text('Punkte: '+max(((starsCatchedHorn*10)+starsCatchedButt-starsMissed),0), 20,375);
-#   textSize(9);
-#   if (columns==3) {
-#     text('Gefangen: '+starsCatchedHorn, 20,390);
-#   } else {
-#     text('Gefangen (Horn/Total): '+starsCatchedHorn+'/'+(starsCatchedHorn+starsCatchedButt), 20,390);
-#   }
-  
-#   fill(150,150,150);
-#   text('Verpasst: '+starsMissed, 320,390);
-#   text('Start A: PgUp', 320,350);
-#   text('Start B: PgDwn',320,360);
-# }
+vizRects = None # initialized in setup/reset
+ledSegmentMap = None # initialized in setup/reset
 
 class LedHandler():
     hubs = {}
@@ -165,6 +153,14 @@ class LedHandler():
     leds = {}
 
     def __init__(self):
+        self.reset()
+
+
+    def reset(self):
+        self.hubs = {}
+        self.stars = {}
+        self.leds = {}
+
         if HUB_ADDR_STAR_1 != '':
             self.AddStarHub(1, HUB_ADDR_STAR_1)
         if HUB_ADDR_STAR_2 != '':
@@ -184,6 +180,7 @@ class LedHandler():
             for column in range(GAME_COLUMNS):
                 self.stars[row][column] = {}
                 self.leds[row][column] = {}
+
 
 
     def AddStarHub(self, num, address):
@@ -251,38 +248,42 @@ class LedHandler():
         grequests.map(rs)
 
 
-# // SETUP & DRAW
-# // ============
+def reset(newColumns, player, stars, screen, leds):
+    global GAME_COLUMNS, vizRects, ledSegmentMap
 
-# function reset(){
-#   if(columns==3) {
-#     vizPos = vizPos3;
-#   } else {
-#     vizPos = vizPos6;
-#   }  
-  
-#   // reset points
-#   starsCatchedHorn = 0;
-#   starsCatchedButt = 0;
-#   starsMissed = 0;
-  
-#   rowTemplate = Array(columns).fill(false);
-#   stars = Array.from(Array(rows), () => [...rowTemplate]);
-  
-#   frameCount=0;
-#   if(!isLooping())
-#     loop();
-# }
+    leds.SetAllStarsOff()
+    leds.UpdateStars()
 
-# function restartA() {
-#     columns = 6;
-#     reset();
-# }
+    GAME_COLUMNS = newColumns
 
-# function restartB() {
-#     columns = 3;
-#     reset();
-# }
+    if GAME_COLUMNS == 3:
+        vizRects = vizRects3
+        ledSegmentMap = ledSegmentMap3
+    else:
+        vizRects = vizRects6
+        ledSegmentMap = ledSegmentMap6
+
+    leds.reset()
+
+    player.starsCatchedHorn = 0
+    player.starsCatchedButt = 0
+    GAME_StarsMissed = 0
+
+    for star in stars:
+        star.kill()
+
+    if GAME_COLUMNS == 3:
+        bgdtile = load_image("backgroundB.png")
+    else:
+        bgdtile = load_image("background.png")
+
+    background = pg.Surface(SCREENRECT.size)
+    for x in range(0, SCREENRECT.width, bgdtile.get_width()):
+        background.blit(bgdtile, (x, 0))
+    screen.blit(background, (0, 0))
+    pg.display.flip()
+
+    FRAME_COUNT = 0
 
 def spawnNewStarRow(stars, stargroups):
     if(FRAME_COUNT>STAR_STOP_SPAWN_FRAMECOUNT):
@@ -572,7 +573,15 @@ def main(winstyle=0):
     all = pg.sprite.RenderUpdates()
 
     # initialize our starting sprites
-    global FRAME_COUNT
+    global FRAME_COUNT, vizRects, ledSegmentMap
+
+    if GAME_COLUMNS == 3:
+        vizRects = vizRects3
+        ledSegmentMap = ledSegmentMap3
+    else:
+        vizRects = vizRects6
+        ledSegmentMap = ledSegmentMap6
+
     player = Player(all)
 
     leds = LedHandler();
@@ -599,9 +608,19 @@ def main(winstyle=0):
         # get input
         for event in pg.event.get():
             if event.type == pg.QUIT:
-                return
+                # exit game loop and shut down leds
+                player.kill()
+                continue
             if event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
-                return
+                # exit game loop and shut down leds
+                player.kill()
+                continue
+            if event.type == pg.KEYDOWN and event.key == pg.K_PAGEUP:
+                reset(6, player, stars, screen, leds)
+                continue
+            if event.type == pg.KEYDOWN and event.key == pg.K_PAGEDOWN:
+                reset(3, player, stars, screen, leds)
+                continue
             if event.type == pg.KEYDOWN and event.key == pg.K_RIGHT:
                 player.move(1)
             if event.type == pg.KEYDOWN and event.key == pg.K_LEFT:
@@ -658,6 +677,9 @@ def main(winstyle=0):
 
         # cap the framerate at 10fps. Also called 10HZ or 10 times per second.
         clock.tick(FRAME_RATE)
+
+    leds.SetAllStarsOff()
+    leds.UpdateStars()
 
     if pg.mixer:
         pg.mixer.music.fadeout(1000)
