@@ -500,6 +500,30 @@ class UiText(pg.sprite.Sprite):
                 self.rect.left = self.rect.left + ((self.targetRect.width - img.get_rect().width))
 
 
+class ButtonIcon(pg.sprite.Sprite):
+
+    animcycle = 24
+    images: List[pg.Surface] = []
+    paused = False
+
+    def __init__(self, x, y, images, *groups):
+        pg.sprite.Sprite.__init__(self, *groups)
+        self.images = images
+        self.image = self.images[0]
+        self.rect = self.image.get_rect()
+        self.rect.left = x
+        self.rect.top = y
+        self.frame = 0
+
+    def update(self, *args, **kwargs):
+        if self.paused:
+            self.image = self.images[0]
+            return
+
+        self.frame = self.frame + 1
+        self.image = self.images[self.frame // self.animcycle % 2]
+
+
 def spawnNewStarRow(stars, stargroups):
     if(FRAME_COUNT>STAR_STOP_SPAWN_FRAMECOUNT):
         return
@@ -570,6 +594,8 @@ def main(winstyle=0):
 
     # Initialize Game Groups
     stars = pg.sprite.Group()
+    gameButtons = pg.sprite.Group()    
+    endButtons = pg.sprite.Group()
     all = pg.sprite.RenderUpdates()
 
     # initialize our starting sprites
@@ -584,6 +610,14 @@ def main(winstyle=0):
 
     player = Player(all)
 
+    # right/left buttons
+    ButtonIcon(810, 330, [load_image(im) for im in ("button_blue_left.png", "button_blue_left_pressed.png")], (gameButtons, all)).frame = 24 # offset button animations a bit
+    ButtonIcon(860, 330, [load_image(im) for im in ("button_blue_right.png", "button_blue_right_pressed.png")], (gameButtons, all))
+    ButtonIcon(780, 370, [load_image(im) for im in ("button_yellow.png", "button_yellow_pressed.png")], (gameButtons, all)).frame = 12
+
+    ButtonIcon(750, 620, [load_image(im) for im in ("button_black_right.png", "button_black_right_pressed.png")], (endButtons, all)).frame = 24
+    ButtonIcon(750, 670, [load_image(im) for im in ("button_black_left.png", "button_black_left_pressed.png")], (endButtons, all))
+
     leds = LedHandler();
 
     if pg.font:
@@ -597,10 +631,6 @@ def main(winstyle=0):
         statMissedText = UiText(all)
         statMissedText.targetRect = Rect(739,550, 510, 50)
         statMissedText.color = "grey"
-
-        all.add(scoreText)
-        all.add(statText)
-        all.add(statText)
 
     # Run our main loop whilst the player is alive.
     while player.alive():
@@ -641,6 +671,12 @@ def main(winstyle=0):
 
         statMissedText.text = f"Verpasst: {GAME_StarsMissed}"
 
+
+        if (FRAME_COUNT == 1) or (FRAME_COUNT == GAME_END_FRAMECOUNT):
+            for button in gameButtons:
+                button.paused = FRAME_COUNT != 1
+            for button in endButtons:
+                button.paused = FRAME_COUNT != GAME_END_FRAMECOUNT
 
 
         # clear/erase the last drawn sprites
