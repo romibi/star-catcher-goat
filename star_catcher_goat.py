@@ -286,34 +286,6 @@ def reset(newColumns, player, stars, screen, leds):
 
     FRAME_COUNT = 0
 
-def spawnNewStarRow(stars, stargroups):
-    if(FRAME_COUNT>STAR_STOP_SPAWN_FRAMECOUNT):
-        return
-
-    if FRAME_COUNT % STAR_MOVE_RATE != 0:
-        return
-
-    spawnStar = False
-    starLikelyhood = min(STAR_BASE_LIKELYHOOD + (FRAME_COUNT*STAR_TIMER_LIKELYHOOD), STAR_MAX_LIKELYHOOD);
-    starCount = len(stars.sprites())
-
-    for starNr in range(MAX_STARS):
-        randomDraw = random.random()
-        spawnStar = randomDraw < starLikelyhood
-
-        if starCount <= FORCE_STAR_SPAWN_MIN:
-            #print("Force star spawn")
-            spawnStar=True
-            starCount += 1
-
-        #print(f"likelyHood: {starLikelyhood}, draw: {randomDraw}, spawn: {spawnStar}")
-
-        if spawnStar:
-            spawnColumn = random.randint(0, GAME_COLUMNS-1);
-            #print(f"Spawning at {spawnColumn}")
-            Star(spawnColumn, stargroups)
-
-
 class Star(pg.sprite.Sprite):
 
     gridPosX = 0
@@ -527,6 +499,33 @@ class UiText(pg.sprite.Sprite):
             elif self.align == 1:
                 self.rect.left = self.rect.left + ((self.targetRect.width - img.get_rect().width))
 
+
+def spawnNewStarRow(stars, stargroups):
+    if(FRAME_COUNT>STAR_STOP_SPAWN_FRAMECOUNT):
+        return
+
+    if FRAME_COUNT % STAR_MOVE_RATE != 0:
+        return
+
+    spawnStar = False
+    starLikelyhood = min(STAR_BASE_LIKELYHOOD + (FRAME_COUNT*STAR_TIMER_LIKELYHOOD), STAR_MAX_LIKELYHOOD);
+    starCount = len(stars.sprites())
+
+    for starNr in range(MAX_STARS):
+        randomDraw = random.random()
+        spawnStar = randomDraw < starLikelyhood
+
+        if starCount <= FORCE_STAR_SPAWN_MIN:
+            #print("Force star spawn")
+            spawnStar=True
+            starCount += 1
+
+        #print(f"likelyHood: {starLikelyhood}, draw: {randomDraw}, spawn: {spawnStar}")
+
+        if spawnStar:
+            spawnColumn = random.randint(0, GAME_COLUMNS-1);
+            #print(f"Spawning at {spawnColumn}")
+            Star(spawnColumn, stargroups)
 
 
 def main(winstyle=0):
