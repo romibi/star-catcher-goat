@@ -6,6 +6,7 @@ from typing import List
 import pygame as pg
 from pygame import Rect
 import grequests
+from enum import Enum
 
 # see if we can load more than standard BMP
 if not pg.image.get_extended():
@@ -52,6 +53,8 @@ SCREENRECT = pg.Rect(0, 0, 1280, 720)
 
 main_dir = os.path.split(os.path.abspath(__file__))[0]
 
+CURRENT_MENU = None
+MENU_JUST_CLOSED = False
 
 # helper functions
 def load_image(file):
@@ -84,7 +87,7 @@ def load_sound(file):
 # goatPos = 0; # 0 = column 0&1, 1 = column 2&3, 2 = column 4&5
 # goatDir = 0; # 0 = left, 1 = right;
 
-# // missed points (other points in plater class)
+# // missed points (other points in player class)
 GAME_StarsMissed = 0;
 
 # vizPos für 3 columns
@@ -416,6 +419,10 @@ class Player(pg.sprite.Sprite):
         self.updateRect()
 
 
+    def cursorMove(self, rect):
+        self.rect = rect
+
+
     def HornGlow(self):
         self.hornGlowIntensity = 20
         self.updateImage()
@@ -524,6 +531,55 @@ class ButtonIcon(pg.sprite.Sprite):
         self.image = self.images[self.frame // self.animcycle % 2]
 
 
+class MenuScreen():
+    def __init__(self, player, screen):
+        self.player = player #todo: create separate cursor sprite
+        self.screen = screen
+        self.background = screen.copy()
+        self.sprites = pg.sprite.RenderUpdates()
+        self.sprites.add(player) # todo remove
+
+        self.frame = -1
+
+        overlayBg = pg.Surface(SCREENRECT.size, pg.SRCALPHA,32)
+        overlayBg.fill((0,0,0, 150))
+        self.background.blit(overlayBg, (0, 0))
+        player.cursorMove(Rect(360, 640, 64, 64))
+
+
+    def Loop(self):
+        self.frame += 1
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
+                # exit game loop and shut down leds
+                self.player.kill()
+                return
+            if event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
+                global CURRENT_MENU, MENU_JUST_CLOSED
+                self.player.updateRect()
+                CURRENT_MENU = None
+                MENU_JUST_CLOSED = True
+                return
+            if event.type == pg.KEYDOWN and event.key == pg.K_UP:
+                self.player.cursorMove(Rect(50, 100, 64, 64))
+            if event.type == pg.KEYDOWN and event.key == pg.K_DOWN:
+                self.player.cursorMove(Rect(50, 150, 64, 64))
+
+        if self.frame == 0:
+            self.screen.blit(self.background, (0, 0))
+
+        self.sprites.clear(self.screen, self.background)
+
+        self.sprites.update()
+
+        # draw the scene
+        if self.frame == 0:
+            pg.display.flip()
+        
+        dirty = self.sprites.draw(self.screen)
+        pg.display.update(dirty)
+
+
 def spawnNewStarRow(stars, stargroups):
     if(FRAME_COUNT>STAR_STOP_SPAWN_FRAMECOUNT):
         return
@@ -596,10 +652,11 @@ def main(winstyle=0):
     stars = pg.sprite.Group()
     gameButtons = pg.sprite.Group()    
     endButtons = pg.sprite.Group()
-    all = pg.sprite.RenderUpdates()
+
+    gameSprites = pg.sprite.RenderUpdates()
 
     # initialize our starting sprites
-    global FRAME_COUNT, vizRects, ledSegmentMap
+    global CURRENT_MENU, vizRects, ledSegmentMap
 
     if GAME_COLUMNS == 3:
         vizRects = vizRects3
@@ -608,108 +665,38 @@ def main(winstyle=0):
         vizRects = vizRects6
         ledSegmentMap = ledSegmentMap6
 
-    player = Player(all)
+    player = Player(gameSprites)
 
     # right/left buttons
-    ButtonIcon(810, 330, [load_image(im) for im in ("button_blue_left.png", "button_blue_left_pressed.png")], (gameButtons, all)).frame = 24 # offset button animations a bit
-    ButtonIcon(860, 330, [load_image(im) for im in ("button_blue_right.png", "button_blue_right_pressed.png")], (gameButtons, all))
-    ButtonIcon(780, 370, [load_image(im) for im in ("button_yellow.png", "button_yellow_pressed.png")], (gameButtons, all)).frame = 12
+    ButtonIcon(810, 330, [load_image(im) for im in ("button_blue_left.png", "button_blue_left_pressed.png")], (gameButtons, gameSprites)).frame = 24 # offset button animations a bit
+    ButtonIcon(860, 330, [load_image(im) for im in ("button_blue_right.png", "button_blue_right_pressed.png")], (gameButtons, gameSprites))
+    ButtonIcon(780, 370, [load_image(im) for im in ("button_yellow.png", "button_yellow_pressed.png")], (gameButtons, gameSprites)).frame = 12
 
-    ButtonIcon(750, 620, [load_image(im) for im in ("button_black_right.png", "button_black_right_pressed.png")], (endButtons, all)).frame = 24
-    ButtonIcon(750, 670, [load_image(im) for im in ("button_black_left.png", "button_black_left_pressed.png")], (endButtons, all))
+    ButtonIcon(750, 620, [load_image(im) for im in ("button_black_right.png", "button_black_right_pressed.png")], (endButtons, gameSprites)).frame = 24
+    ButtonIcon(750, 670, [load_image(im) for im in ("button_black_left.png", "button_black_left_pressed.png")], (endButtons, gameSprites))
 
     leds = LedHandler();
 
     if pg.font:
-        scoreText = UiText(all)
+        scoreText = UiText(gameSprites)
         scoreText.targetRect = Rect(905,445, 335, 50)
         scoreText.font = pg.font.Font(None, 56)
         scoreText.color = "#FFC000"
         scoreText.align = 0
-        statText = UiText(all)
+        statText = UiText(gameSprites)
         statText.targetRect = Rect(739,515, 510, 50)
-        statMissedText = UiText(all)
+        statMissedText = UiText(gameSprites)
         statMissedText.targetRect = Rect(739,550, 510, 50)
         statMissedText.color = "grey"
 
     # Run our main loop whilst the player is alive.
     while player.alive():
-        FRAME_COUNT += 1
-        # get input
-        for event in pg.event.get():
-            if event.type == pg.QUIT:
-                # exit game loop and shut down leds
-                player.kill()
-                continue
-            if event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
-                # exit game loop and shut down leds
-                player.kill()
-                continue
-            if event.type == pg.KEYDOWN and event.key == pg.K_PAGEUP:
-                reset(6, player, stars, screen, leds)
-                continue
-            if event.type == pg.KEYDOWN and event.key == pg.K_PAGEDOWN:
-                reset(3, player, stars, screen, leds)
-                continue
-            if event.type == pg.KEYDOWN and event.key == pg.K_RIGHT:
-                player.move(1)
-            if event.type == pg.KEYDOWN and event.key == pg.K_LEFT:
-                player.move(-1)
-            if event.type == pg.KEYDOWN and event.key == pg.K_UP:
-                player.jump([star for star in stars if star.hangingLow])
-
-        keystate = pg.key.get_pressed()
-
-        # update score text:
-        punkte = max(((player.starsCatchedHorn*10)+player.starsCatchedButt-GAME_StarsMissed),0)
-        scoreText.text = f"{punkte}"
-
-        if GAME_COLUMNS == 3:
-            statText.text = f"Gefangen: {player.starsCatchedHorn}"
+        if CURRENT_MENU:
+            CURRENT_MENU.Loop()
         else:
-            statText.text = f"Gefangen: (Horn/Total): {player.starsCatchedHorn}/{player.starsCatchedHorn+player.starsCatchedButt}"
-
-        statMissedText.text = f"Verpasst: {GAME_StarsMissed}"
-
-
-        if (FRAME_COUNT == 1) or (FRAME_COUNT == GAME_END_FRAMECOUNT):
-            for button in gameButtons:
-                button.paused = FRAME_COUNT != 1
-            for button in endButtons:
-                button.paused = FRAME_COUNT != GAME_END_FRAMECOUNT
-
-
-        # clear/erase the last drawn sprites
-        #all.clear(screen, background)
-        all.clear(screen, background)
-        leds.SetAllStarsOff()
-
-        # make stars land on player before update
-        for star in stars:
-            if star.hangingLow:
-                star.land(player)
-
-        # update all the sprites
-        all.update()
-
-        for star in stars:
-            leds.SetStarLed(star.gridPosY, star.gridPosX, STAR_BRIGHTNESS)
-
-        # handle player input
-        #direction = keystate[pg.K_RIGHT] - keystate[pg.K_LEFT]
-        #player.move(direction)
-        #jumping = keystate[pg.K_UP]
-        #player.jumping = jumping
-        
-        # draw the scene
-        dirty = all.draw(screen)
-        pg.display.update(dirty)
-
-        spawnNewStarRow(stars, (stars, all))
-
-        leds.UpdateStars()
-
-        #print(f"starsCatchedHorn: {player.starsCatchedHorn}, starsCatchedButt:  {player.starsCatchedButt}, starsMissed: {GAME_StarsMissed}");
+            PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButtons, endButtons, gameSprites, screen, background)
+            global MENU_JUST_CLOSED
+            MENU_JUST_CLOSED = False
 
         # cap the framerate at 10fps. Also called 10HZ or 10 times per second.
         clock.tick(FRAME_RATE)
@@ -720,6 +707,94 @@ def main(winstyle=0):
     if pg.mixer:
         pg.mixer.music.fadeout(1000)
     pg.time.wait(1000)
+
+
+def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButtons, endButtons, gameSprites, screen, background):
+    global FRAME_COUNT
+    FRAME_COUNT += 1
+    
+    # get input
+    for event in pg.event.get():
+        if event.type == pg.QUIT:
+            # exit game loop and shut down leds
+            player.kill()
+            return
+        if event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
+            global CURRENT_MENU
+            CURRENT_MENU = MenuScreen(player, screen)
+            return
+        if event.type == pg.KEYDOWN and event.key == pg.K_PAGEUP:
+            reset(6, player, stars, screen, leds)
+            return
+        if event.type == pg.KEYDOWN and event.key == pg.K_PAGEDOWN:
+            reset(3, player, stars, screen, leds)
+            return
+        if event.type == pg.KEYDOWN and event.key == pg.K_RIGHT:
+            player.move(1)
+        if event.type == pg.KEYDOWN and event.key == pg.K_LEFT:
+            player.move(-1)
+        if event.type == pg.KEYDOWN and event.key == pg.K_UP:
+            player.jump([star for star in stars if star.hangingLow])
+
+    keystate = pg.key.get_pressed()
+
+    # update score text:
+    punkte = max(((player.starsCatchedHorn*10)+player.starsCatchedButt-GAME_StarsMissed),0)
+    scoreText.text = f"{punkte}"
+
+    if GAME_COLUMNS == 3:
+        statText.text = f"Gefangen: {player.starsCatchedHorn}"
+    else:
+        statText.text = f"Gefangen: (Horn/Total): {player.starsCatchedHorn}/{player.starsCatchedHorn+player.starsCatchedButt}"
+
+    statMissedText.text = f"Verpasst: {GAME_StarsMissed}"
+
+
+    if (FRAME_COUNT == 1) or (FRAME_COUNT == GAME_END_FRAMECOUNT):
+        for button in gameButtons:
+            button.paused = FRAME_COUNT != 1
+        for button in endButtons:
+            button.paused = FRAME_COUNT != GAME_END_FRAMECOUNT
+
+
+    # re-draw whole background
+    if MENU_JUST_CLOSED:
+        screen.blit(background, (0, 0))
+       
+    # clear/erase the last drawn sprites
+    gameSprites.clear(screen, background)
+    
+    leds.SetAllStarsOff()
+
+    # make stars land on player before update
+    for star in stars:
+        if star.hangingLow:
+            star.land(player)
+
+    # update all the sprites
+    gameSprites.update()
+
+    for star in stars:
+        leds.SetStarLed(star.gridPosY, star.gridPosX, STAR_BRIGHTNESS)
+
+    # handle player input
+    #direction = keystate[pg.K_RIGHT] - keystate[pg.K_LEFT]
+    #player.move(direction)
+    #jumping = keystate[pg.K_UP]
+    #player.jumping = jumping
+    
+    # draw the scene
+    if MENU_JUST_CLOSED:
+        pg.display.flip()
+    
+    dirty = gameSprites.draw(screen)
+    pg.display.update(dirty)
+
+    spawnNewStarRow(stars, (stars, gameSprites))
+
+    leds.UpdateStars()
+
+    #print(f"starsCatchedHorn: {player.starsCatchedHorn}, starsCatchedButt:  {player.starsCatchedButt}, starsMissed: {GAME_StarsMissed}");
 
 
 
