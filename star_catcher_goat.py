@@ -244,8 +244,9 @@ class LedHandler():
 
         #if len(urls)>0:
         #    print(f"triggering url: {urls}")
-        rs = (grequests.get(u) for u in urls)
+        rs = (grequests.get(u, timeout=0.00001) for u in urls)
         grequests.map(rs)
+        # TODO maybe show error message? (no timeout exception?)
 
 
 def reset(newColumns, player, stars, screen, leds):
