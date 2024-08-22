@@ -496,6 +496,37 @@ class Player(pg.sprite.Sprite):
         return False
 
 
+class UiText(pg.sprite.Sprite):
+    ""
+    text = ""
+
+    def __init__(self, *groups):
+        pg.sprite.Sprite.__init__(self, *groups)
+        self.font = pg.font.Font(None, 48)
+        #self.font.set_italic(1)
+        self.color = "white"
+        self.lastText = None
+        self.targetRect = Rect(0,0,0,0)
+        self.align = -1 # -1 left, 0 center, 1 right
+        self.update()
+        self.rect = self.image.get_rect().move(10, 450)
+
+
+    def update(self, *args, **kwargs):
+        """We only update the score in update() when it has changed."""
+        if self.text != self.lastText:
+            self.lastText = self.text
+            img = self.font.render(self.text, 0, self.color)
+            self.image = img
+
+            self.rect = self.targetRect.copy()
+            if self.align == 0:
+                self.rect.left = self.rect.left + ((self.targetRect.width - img.get_rect().width) / 2)
+            elif self.align == 1:
+                self.rect.left = self.rect.left + ((self.targetRect.width - img.get_rect().width))
+
+
+
 def main(winstyle=0):
     # Initialize pygame
     if pg.get_sdl_version()[0] == 2:
@@ -541,16 +572,26 @@ def main(winstyle=0):
     all = pg.sprite.RenderUpdates()
 
     # initialize our starting sprites
-    global SCORE, FRAME_COUNT
+    global FRAME_COUNT
     player = Player(all)
 
     leds = LedHandler();
 
-    #Star( 0,
-    #    stars, all
-    #)  # note, this 'lives' because it goes into a sprite group
-    #if pg.font:
-    #    all.add(Score(all))
+    if pg.font:
+        scoreText = UiText(all)
+        scoreText.targetRect = Rect(905,445, 335, 50)
+        scoreText.font = pg.font.Font(None, 56)
+        scoreText.color = "#FFC000"
+        scoreText.align = 0
+        statText = UiText(all)
+        statText.targetRect = Rect(739,515, 510, 50)
+        statMissedText = UiText(all)
+        statMissedText.targetRect = Rect(739,550, 510, 50)
+        statMissedText.color = "grey"
+
+        all.add(scoreText)
+        all.add(statText)
+        all.add(statText)
 
     # Run our main loop whilst the player is alive.
     while player.alive():
@@ -569,6 +610,19 @@ def main(winstyle=0):
                 player.jump([star for star in stars if star.hangingLow])
 
         keystate = pg.key.get_pressed()
+
+        # update score text:
+        punkte = max(((player.starsCatchedHorn*10)+player.starsCatchedButt-GAME_StarsMissed),0)
+        scoreText.text = f"{punkte}"
+
+        if GAME_COLUMNS == 3:
+            statText.text = f"Gefangen: {player.starsCatchedHorn}"
+        else:
+            statText.text = f"Gefangen: (Horn/Total): {player.starsCatchedHorn}/{player.starsCatchedHorn+player.starsCatchedButt}"
+
+        statMissedText.text = f"Verpasst: {GAME_StarsMissed}"
+
+
 
         # clear/erase the last drawn sprites
         #all.clear(screen, background)
