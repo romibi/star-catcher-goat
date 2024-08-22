@@ -5,6 +5,7 @@ import random
 from typing import List
 import pygame as pg
 from pygame import Rect
+import grequests
 
 # see if we can load more than standard BMP
 if not pg.image.get_extended():
@@ -19,6 +20,7 @@ MAX_STARS = 2 # max stars per row
 
 # LED Stuff
 STAR_COLOR = 'FF9000';
+STAR_BRIGHTNESS = 255;
 
 HUB_ADDR_STAR_1 = '192.168.1.107';
 HUB_ADDR_STAR_2 = '';
@@ -81,12 +83,8 @@ def load_sound(file):
 # let stars = Array.from(Array(rows), () => [...rowTemplate]);
 # goatPos = 0; # 0 = column 0&1, 1 = column 2&3, 2 = column 4&5
 # goatDir = 0; # 0 = left, 1 = right;
-# let goatGlowHorn = 0; // glow intensity;
-# let goatGlowBody = 0; // glow intensity;
 
-# // points
-# let starsCatchedHorn = 0;
-# let starsCatchedButt = 0;
+# // missed points (other points in plater class)
 GAME_StarsMissed = 0;
 
 # // vizPos für 3 columns
@@ -115,15 +113,15 @@ vizRects = vizRects6
 vizGoatRects = [ Rect(84, 540, 64, 64), Rect(110, 540, 64, 64), Rect(318, 540, 64, 64), Rect(344, 540, 64, 64), Rect(552, 540, 64, 64), Rect(578, 540, 64, 64)]
 
 # // LED info
-# let ledSegmentMap = [
-#   [ {hub: 1, segment: 2}, {hub: 1, segment: 3}, {hub: 2, segment: 2}, {hub: 2, segment: 3}, {hub: 3, segment: 2}, {hub: 3, segment: 3}],
-#   [ {hub: 1, segment: 1}, {hub: 1, segment: 4}, {hub: 2, segment: 1}, {hub: 2, segment: 4}, {hub: 3, segment: 1}, {hub: 3, segment: 4}],
-#   [ {hub: 1, segment: 0}, {hub: 1, segment: 5}, {hub: 2, segment: 0}, {hub: 2, segment: 5}, {hub: 3, segment: 0}, {hub: 3, segment: 5}],
-  
-#   [ {hub: 4, segment: 2}, {hub: 4, segment: 3}, {hub: 5, segment: 2}, {hub: 5, segment: 3}, {hub: 6, segment: 2}, {hub: 6, segment: 3}],
-#   [ {hub: 4, segment: 1}, {hub: 4, segment: 4}, {hub: 5, segment: 1}, {hub: 5, segment: 4}, {hub: 6, segment: 1}, {hub: 6, segment: 4}],
-#   [ {hub: 4, segment: 0}, {hub: 4, segment: 5}, {hub: 5, segment: 0}, {hub: 5, segment: 5}, {hub: 6, segment: 0}, {hub: 6, segment: 5}]
-# ]
+ledSegmentMap = [
+   [ {"hub": 1, "segment": 2}, {"hub": 1, "segment": 3}, {"hub": 2, "segment": 2}, {"hub": 2, "segment": 3}, {"hub": 3, "segment": 2}, {"hub": 3, "segment": 3}],
+   [ {"hub": 1, "segment": 1}, {"hub": 1, "segment": 4}, {"hub": 2, "segment": 1}, {"hub": 2, "segment": 4}, {"hub": 3, "segment": 1}, {"hub": 3, "segment": 4}],
+   [ {"hub": 1, "segment": 0}, {"hub": 1, "segment": 5}, {"hub": 2, "segment": 0}, {"hub": 2, "segment": 5}, {"hub": 3, "segment": 0}, {"hub": 3, "segment": 5}],
+
+   [ {"hub": 4, "segment": 2}, {"hub": 4, "segment": 3}, {"hub": 5, "segment": 2}, {"hub": 5, "segment": 3}, {"hub": 6, "segment": 2}, {"hub": 6, "segment": 3}],
+   [ {"hub": 4, "segment": 1}, {"hub": 4, "segment": 4}, {"hub": 5, "segment": 1}, {"hub": 5, "segment": 4}, {"hub": 6, "segment": 1}, {"hub": 6, "segment": 4}],
+   [ {"hub": 4, "segment": 0}, {"hub": 4, "segment": 5}, {"hub": 5, "segment": 0}, {"hub": 5, "segment": 5}, {"hub": 6, "segment": 0}, {"hub": 6, "segment": 5}]
+]
 
 # let vizPos; // initialized in setup
 
@@ -161,75 +159,97 @@ vizGoatRects = [ Rect(84, 540, 64, 64), Rect(110, 540, 64, 64), Rect(318, 540, 6
 #   text('Start B: PgDwn',320,360);
 # }
 
-# // LED control
+class LedHandler():
+    hubs = {}
+    stars = {}
+    leds = {}
 
-# function GetStarHub(row, column) {
-#   let segment = ledSegmentMap[row][column];
-  
-#   switch (segment.hub) {
-#     case 1: 
-#       return HUB_ADDR_STAR_1;
-#     case 2:
-#       return HUB_ADDR_STAR_2;
-#     case 3:
-#       return HUB_ADDR_STAR_3;
-#     case 4:
-#       return HUB_ADDR_STAR_4;
-#     case 5:
-#       return HUB_ADDR_STAR_5;
-#     case 6:
-#       return HUB_ADDR_STAR_6;
-#   }
-#   return '';
-# }
+    def __init__(self):
+        if HUB_ADDR_STAR_1 != '':
+            self.AddStarHub(1, HUB_ADDR_STAR_1)
+        if HUB_ADDR_STAR_2 != '':
+            self.AddStarHub(2, HUB_ADDR_STAR_2)
+        if HUB_ADDR_STAR_3 != '':
+            self.AddStarHub(3, HUB_ADDR_STAR_3)
+        if HUB_ADDR_STAR_4 != '':
+            self.AddStarHub(4, HUB_ADDR_STAR_4)
+        if HUB_ADDR_STAR_5 != '':
+            self.AddStarHub(5, HUB_ADDR_STAR_5)
+        if HUB_ADDR_STAR_6 != '':
+            self.AddStarHub(6, HUB_ADDR_STAR_6)
 
-# function GetLedApiUrl(row, column, starBright, starColour) {
-#   let hub = GetStarHub(row, column);
-#   if (hub == '') return '';
-  
-#   let segment = ledSegmentMap[row][column];
-  
-#   if(segment.bright == starBright && segment.colour == starColour) return '';
-  
-#   segment.bright = starBright;
-#   segment.colour = starColour;
-  
-#   // API_ADDR = '/win';
-#   // API_ARG_SEGMENT = '&SM=';
-#   // API_ARG_BRIGHTNES = '&SB=';
-#   // API_ARG_COLOR = '&CL=H' // rrggbb
-  
-#   return 'http://'+hub+API_ADDR+API_ARG_SEGMENT+segment.segment+API_ARG_BRIGHTNES+starBright+API_ARG_COLOR+starColour;
-# }
+        for row in range(GAME_ROWS):
+            self.stars[row] = {}
+            self.leds[row] = {}
+            for column in range(GAME_COLUMNS):
+                self.stars[row][column] = {}
+                self.leds[row][column] = {}
 
-# function SetStarLed(row, column) {  
-#   let glowing = stars[row][column];
-  
-#   starBright = 0;
-#   if (glowing) starBright = 255;
-  
-#   let apiCall = GetLedApiUrl(row, column, starBright, STAR_COLOR);
-  
-#   if (apiCall == '') return;
-  
-#   console.log('Calling '+apiCall);
-  
-#   var request = $.ajax({
-#     url: apiCall,
-#     method: "GET",
-#     timeout: 5000
-#   });
-# }
 
-# function UpdateLEDs() {
-#   let currentRow = 0;
-#   let currentColumn = 0;
-#   for (let row = 0; row < rows; row++) {
-#     for (let column = 0; column < columns; column++) {
-#       SetStarLed(row, column);
-#     }  
-#   } 
-# }
+    def AddStarHub(self, num, address):
+        self.hubs[num] = address
+
+
+    def GetStarHub(self, row, column):
+        segment = ledSegmentMap[row][column]
+        hub = segment["hub"]
+        return self.hubs.get(hub, None)
+
+
+    def GetLedApiUrl(self, row, column, bright, color):
+        hub = self.GetStarHub(row, column);
+        if not hub:
+            return None;
+  
+        segment = ledSegmentMap[row][column];
+
+        return f'http://{hub}{API_ADDR}{API_ARG_SEGMENT}{segment["segment"]}{API_ARG_BRIGHTNES}{bright}{API_ARG_COLOR}{color}'
+
+
+    def SetStarLed(self, row, column, bright, color=None):
+        self.stars[row][column]['bright'] = bright
+        if not 'color' in self.stars[row][column]:
+            self.stars[row][column]['color'] = STAR_COLOR
+        if color:
+            self.stars[row][column]['color'] = color
+
+
+    def SetAllStarsOff(self):
+        for row, starRow in self.stars.items():
+            for column, star in starRow.items():
+                self.SetStarLed(row, column, 0)
+
+
+    def UpdateStars(self):
+        urls = []
+        for row, starRow in self.stars.items():
+            for column, star in starRow.items():
+                led = self.leds[row][column]
+
+                starBrigth = star.get('bright', 0)
+                ledBrigth = led.get('bright', None)
+
+                starColor = star.get('color', STAR_COLOR)
+                ledColor = star.get('color', None)
+
+                if (starBrigth == ledBrigth) and (starColor == ledColor):
+                    continue
+
+                self.leds[row][column]['bright'] = starBrigth
+                self.leds[row][column]['color'] = starColor
+
+                apiUrl = self.GetLedApiUrl(row, column, starBrigth, starColor)
+                if not apiUrl:
+                    continue
+
+                urls += [apiUrl]
+                #print(f"Adding url for star row: {row} column: {column} to request: {apiUrl}")
+
+        #if len(urls)>0:
+        #    print(f"triggering url: {urls}")
+        rs = (grequests.get(u) for u in urls)
+        grequests.map(rs)
+
 
 # // SETUP & DRAW
 # // ============
@@ -252,18 +272,6 @@ vizGoatRects = [ Rect(84, 540, 64, 64), Rect(110, 540, 64, 64), Rect(318, 540, 6
 #   frameCount=0;
 #   if(!isLooping())
 #     loop();
-# }
-
-# function setup() {
-#   createCanvas(400, 400);
-#   frameRate(FRAME_RATE);
-#   reset();
-# }
-
-# function draw() {
-#   drawVisualization();  
-#   UpdateLEDs();
-#   doGameLoop();  
 # }
 
 # function restartA() {
@@ -535,6 +543,9 @@ def main(winstyle=0):
     # initialize our starting sprites
     global SCORE, FRAME_COUNT
     player = Player(all)
+
+    leds = LedHandler();
+
     #Star( 0,
     #    stars, all
     #)  # note, this 'lives' because it goes into a sprite group
@@ -562,6 +573,7 @@ def main(winstyle=0):
         # clear/erase the last drawn sprites
         #all.clear(screen, background)
         all.clear(screen, background)
+        leds.SetAllStarsOff()
 
         # make stars land on player before update
         for star in stars:
@@ -570,6 +582,9 @@ def main(winstyle=0):
 
         # update all the sprites
         all.update()
+
+        for star in stars:
+            leds.SetStarLed(star.gridPosY, star.gridPosX, STAR_BRIGHTNESS)
 
         # handle player input
         #direction = keystate[pg.K_RIGHT] - keystate[pg.K_LEFT]
@@ -582,6 +597,8 @@ def main(winstyle=0):
         pg.display.update(dirty)
 
         spawnNewStarRow(stars, (stars, all))
+
+        leds.UpdateStars()
 
         #print(f"starsCatchedHorn: {player.starsCatchedHorn}, starsCatchedButt:  {player.starsCatchedButt}, starsMissed: {GAME_StarsMissed}");
 
