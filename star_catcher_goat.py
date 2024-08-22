@@ -249,7 +249,7 @@ class LedHandler():
 
 
 def reset(newColumns, player, stars, screen, leds):
-    global GAME_COLUMNS, vizRects, ledSegmentMap
+    global GAME_COLUMNS, FRAME_COUNT, GAME_StarsMissed, vizRects, ledSegmentMap
 
     leds.SetAllStarsOff()
     leds.UpdateStars()
