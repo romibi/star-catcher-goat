@@ -16,7 +16,9 @@ I'm using an old Raspberry PI 2 (unless it shows that it is not powerful enough)
 - `sudo apt install libegl-dev python3-pip`
 - `python3 -m venv scg-venv`
 - `source scg-venv/bin/activate`
-- `pip install pygame grequests`
+- `pip install pygame grequests rpi-rf`
+- `pip uninstall rpi-gpio` (buggy on bookworm)
+- `pip install rpi-lgpio` (works instead on bookworm)
 - Enable autologin using raspi-config
 - Add the following lines to .bashrc or .zshenv    
 ```
