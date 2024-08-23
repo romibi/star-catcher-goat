@@ -20,6 +20,7 @@ def exithandler(signal, frame):
     rfdevice.cleanup()
     sys.exit(0)
 
+# from https://stackoverflow.com/a/9945785
 def is_set(x, n):
     return x & 2 ** n != 0
 
