@@ -5,6 +5,7 @@
 // =========
 #define REPEAT_DELAY 1000
 #define MIN_DELAY 10
+#define SEND_REPEAT_FAST_COUNT 10
 
 #define SEND_BTNS_OFF_TIMES 10
 #define SEND_START_VALUE 604700672 // 0010 0100 0000 1011 00..
@@ -55,18 +56,19 @@ void setup() {
 
   // setup pins
   pinMode(LED_BUILTIN, OUTPUT);
-  pinMode(BTN_R, INPUT);
-  pinMode(BTN_Y, INPUT);
-  pinMode(BTN_START, INPUT);
-  pinMode(BTN_SELECT, INPUT);
-  pinMode(BTN_UP, INPUT);
-  pinMode(BTN_RIGHT, INPUT);
-  pinMode(BTN_LEFT, INPUT);
-  pinMode(BTN_DOWN, INPUT);
+  pinMode(BTN_R, INPUT_PULLUP);
+  pinMode(BTN_Y, INPUT_PULLUP);
+  pinMode(BTN_START, INPUT_PULLUP);
+  pinMode(BTN_SELECT, INPUT_PULLUP);
+  pinMode(BTN_UP, INPUT_PULLUP);
+  pinMode(BTN_RIGHT, INPUT_PULLUP);
+  pinMode(BTN_LEFT, INPUT_PULLUP);
+  pinMode(BTN_DOWN, INPUT_PULLUP);
 }
 
 int sentDelay = REPEAT_DELAY+1;
 unsigned int sentValue = 65534;
+int sentCount = 0;
 
 void loop() {
   unsigned int value = 0;
@@ -74,25 +76,31 @@ void loop() {
   unsigned long sendValue = 0;
 
   // Read Buttons
-  value = bit_set_to(value, 0, digitalRead(BTN_R)==HIGH);
-  value = bit_set_to(value, 1, digitalRead(BTN_Y)==HIGH);
-  value = bit_set_to(value, 2, digitalRead(BTN_START)==HIGH);
-  value = bit_set_to(value, 3, digitalRead(BTN_SELECT)==HIGH);
-  value = bit_set_to(value, 4, digitalRead(BTN_UP)==HIGH);
-  value = bit_set_to(value, 5, digitalRead(BTN_RIGHT)==HIGH);
-  value = bit_set_to(value, 6, digitalRead(BTN_LEFT)==HIGH);
-  value = bit_set_to(value, 7, digitalRead(BTN_DOWN)==HIGH);
+  value = bit_set_to(value, 0, digitalRead(BTN_R)==LOW);
+  value = bit_set_to(value, 1, digitalRead(BTN_Y)==LOW);
+  value = bit_set_to(value, 2, digitalRead(BTN_START)==LOW);
+  value = bit_set_to(value, 3, digitalRead(BTN_SELECT)==LOW);
+  value = bit_set_to(value, 4, digitalRead(BTN_UP)==LOW);
+  value = bit_set_to(value, 5, digitalRead(BTN_RIGHT)==LOW);
+  value = bit_set_to(value, 6, digitalRead(BTN_LEFT)==LOW);
+  value = bit_set_to(value, 7, digitalRead(BTN_DOWN)==LOW);
 
   // Check if we need to resend
   if(value == sentValue) {
-    // value is unchanged, can wait longer
-    sentDelay += MIN_DELAY;
+    if(sentCount <= SEND_REPEAT_FAST_COUNT) {
+      sentCount++;
+    } else {
+      // value is unchanged and we sent it already a few times quickly, can wait longer now
+      sentDelay += MIN_DELAY;
   
-    if(sentDelay < REPEAT_DELAY) {
-      // sent not long ago, wait and redo loop
-      delay(MIN_DELAY);
-      return;
+      if(sentDelay < REPEAT_DELAY) {
+        // sent not long ago, wait and redo loop
+        delay(MIN_DELAY);
+        return;
+      }
     }
+  } else {
+    sentCount = 0;
   }
 
   // Status LED we will send
@@ -107,9 +115,13 @@ void loop() {
   sendValue = SEND_START_VALUE + valueCorrection + value; // add together with normal value plus start value
 
   // Serial debug out values
-  Serial.print(value+256, BIN);
-  Serial.print(" -> ");
-  Serial.print(valueCorrection, BIN);
+  String printVal = String(value+256, BIN); // prevent leading zeros from beeing ommitted by adding 2^8 and replacing first char with a space
+  printVal[0] = ' ';
+  Serial.print("Button-Values:"+printVal);
+  Serial.print(" ->");
+  printVal = String(valueCorrection+65536, BIN); // prevent leading zeros from beeing ommitted by adding 2^16 and replacing first char with a space
+  printVal[0] = ' ';
+  Serial.print(printVal);
   Serial.print(" -> ");
   Serial.print(sendValue, BIN);
   Serial.print(" -> ");
