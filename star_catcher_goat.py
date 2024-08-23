@@ -55,6 +55,7 @@ main_dir = os.path.split(os.path.abspath(__file__))[0]
 
 CURRENT_MENU = None
 MENU_JUST_CLOSED = False
+GAME_QUIT = False
 
 # helper functions
 def load_image(file):
@@ -276,15 +277,7 @@ def reset(newColumns, player, stars, screen, leds):
     for star in stars:
         star.kill()
 
-    if GAME_COLUMNS == 3:
-        bgdtile = load_image("backgroundB.png")
-    else:
-        bgdtile = load_image("background.png")
-
-    background = pg.Surface(SCREENRECT.size)
-    for x in range(0, SCREENRECT.width, bgdtile.get_width()):
-        background.blit(bgdtile, (x, 0))
-    screen.blit(background, (0, 0))
+    ReRenderBackground(screen)
     pg.display.flip()
 
     FRAME_COUNT = 0
@@ -487,6 +480,7 @@ class UiText(pg.sprite.Sprite):
         #self.font.set_italic(1)
         self.color = "white"
         self.lastText = None
+        self.lastTargetRect = None
         self.targetRect = Rect(0,0,0,0)
         self.align = -1 # -1 left, 0 center, 1 right
         self.update()
@@ -495,8 +489,9 @@ class UiText(pg.sprite.Sprite):
 
     def update(self, *args, **kwargs):
         """We only update the score in update() when it has changed."""
-        if self.text != self.lastText:
+        if (self.text != self.lastText) or (self.targetRect != self.lastTargetRect):
             self.lastText = self.text
+            self.lastTargetRect = self.targetRect
             img = self.font.render(self.text, 0, self.color)
             self.image = img
 
@@ -532,38 +527,49 @@ class ButtonIcon(pg.sprite.Sprite):
 
 
 class MenuScreen():
-    def __init__(self, player, screen):
-        self.player = player #todo: create separate cursor sprite
+    def __init__(self, screen, menuOptionMap):
         self.screen = screen
         self.background = screen.copy()
         self.sprites = pg.sprite.RenderUpdates()
-        self.sprites.add(player) # todo remove
+        self.cursor = UiText(self.sprites)
+        self.cursor.text = ">"
+        self.cursor.targetRect = Rect(50, 100, 64, 64)
+        self.menuOptionMap = menuOptionMap
+        self.cursorIndex = 0
+
+        nextPos = 100
+        for menuEntry in menuOptionMap.keys():
+            entry = UiText(self.sprites);
+            entry.text = menuEntry
+            entry.targetRect = Rect(100, nextPos, 300, 300)
+            nextPos += 50
 
         self.frame = -1
 
         overlayBg = pg.Surface(SCREENRECT.size, pg.SRCALPHA,32)
         overlayBg.fill((0,0,0, 150))
         self.background.blit(overlayBg, (0, 0))
-        player.cursorMove(Rect(360, 640, 64, 64))
 
 
     def Loop(self):
         self.frame += 1
         for event in pg.event.get():
             if event.type == pg.QUIT:
-                # exit game loop and shut down leds
-                self.player.kill()
+                global GAME_QUIT
+                GAME_QUIT = True
                 return
             if event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
-                global CURRENT_MENU, MENU_JUST_CLOSED
-                self.player.updateRect()
-                CURRENT_MENU = None
-                MENU_JUST_CLOSED = True
+                CloseMenu()
                 return
-            if event.type == pg.KEYDOWN and event.key == pg.K_UP:
-                self.player.cursorMove(Rect(50, 100, 64, 64))
             if event.type == pg.KEYDOWN and event.key == pg.K_DOWN:
-                self.player.cursorMove(Rect(50, 150, 64, 64))
+                self.cursorIndex = min(self.cursorIndex+1, len(self.menuOptionMap.keys())-1)
+                self.cursor.targetRect = Rect(50, 100+(self.cursorIndex*50), 64, 64)
+            if event.type == pg.KEYDOWN and event.key == pg.K_UP:
+                self.cursorIndex = max(self.cursorIndex-1, 0)
+                self.cursor.targetRect = Rect(50, 100+(self.cursorIndex*50), 64, 64)
+            if event.type == pg.KEYDOWN and event.key == pg.K_RETURN:
+                menuFuncs = list(self.menuOptionMap.values())
+                func = menuFuncs[self.cursorIndex]()
 
         if self.frame == 0:
             self.screen.blit(self.background, (0, 0))
@@ -606,6 +612,18 @@ def spawnNewStarRow(stars, stargroups):
             spawnColumn = random.randint(0, GAME_COLUMNS-1);
             #print(f"Spawning at {spawnColumn}")
             Star(spawnColumn, stargroups)
+
+
+
+def CloseMenu():
+    global CURRENT_MENU, MENU_JUST_CLOSED
+    CURRENT_MENU = False
+    MENU_JUST_CLOSED = True
+
+
+def QuitGame():
+    global GAME_QUIT
+    GAME_QUIT = True
 
 
 def main(winstyle=0):
@@ -690,7 +708,7 @@ def main(winstyle=0):
         statMissedText.color = "grey"
 
     # Run our main loop whilst the player is alive.
-    while player.alive():
+    while player.alive() and not GAME_QUIT:
         if CURRENT_MENU:
             CURRENT_MENU.Loop()
         else:
@@ -708,10 +726,30 @@ def main(winstyle=0):
         pg.mixer.music.fadeout(1000)
     pg.time.wait(1000)
 
+def ReRenderBackground(screen):
+    if GAME_COLUMNS == 3:
+        bgdtile = load_image("backgroundB.png")
+    else:
+        bgdtile = load_image("background.png")
+
+    background = pg.Surface(SCREENRECT.size)
+    for x in range(0, SCREENRECT.width, bgdtile.get_width()):
+        background.blit(bgdtile, (x, 0))
+    screen.blit(background, (0, 0))
+
 
 def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButtons, endButtons, gameSprites, screen, background):
     global FRAME_COUNT
     FRAME_COUNT += 1
+
+    def Reset6():
+        CloseMenu()
+        reset(6, player, stars, screen, leds)
+
+    def Reset3():
+        CloseMenu()
+        reset(3, player, stars, screen, leds)
+
     
     # get input
     for event in pg.event.get():
@@ -721,13 +759,13 @@ def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButto
             return
         if event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
             global CURRENT_MENU
-            CURRENT_MENU = MenuScreen(player, screen)
+            CURRENT_MENU = MenuScreen(screen, {"Zurück zum Spiel": CloseMenu, "Spiel neustarten (Normal)": Reset6, "Spiel neustarten (Einfach)": Reset3, "Spiel Beenden": QuitGame})
             return
         if event.type == pg.KEYDOWN and event.key == pg.K_PAGEUP:
-            reset(6, player, stars, screen, leds)
+            Reset6()
             return
         if event.type == pg.KEYDOWN and event.key == pg.K_PAGEDOWN:
-            reset(3, player, stars, screen, leds)
+            Reset3()
             return
         if event.type == pg.KEYDOWN and event.key == pg.K_RIGHT:
             player.move(1)
@@ -759,7 +797,7 @@ def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButto
 
     # re-draw whole background
     if MENU_JUST_CLOSED:
-        screen.blit(background, (0, 0))
+        ReRenderBackground(screen)
        
     # clear/erase the last drawn sprites
     gameSprites.clear(screen, background)
