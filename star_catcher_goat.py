@@ -7,6 +7,7 @@ import pygame as pg
 from pygame import Rect
 import grequests
 from enum import Enum
+import threading
 
 # see if we can load more than standard BMP
 if not pg.image.get_extended():
@@ -157,6 +158,7 @@ class LedHandler():
     leds = {}
 
     def __init__(self):
+        self.active = -1 # 0: no, 1: yes, -1: active unless first request fails
         self.reset()
 
 
@@ -245,12 +247,21 @@ class LedHandler():
 
                 urls += [apiUrl]
                 #print(f"Adding url for star row: {row} column: {column} to request: {apiUrl}")
+        
+        rs = (grequests.get(u, timeout=5) for u in urls)
 
-        #if len(urls)>0:
-        #    print(f"triggering url: {urls}")
-        rs = (grequests.get(u, timeout=0.00001) for u in urls)
-        grequests.map(rs)
-        # TODO maybe show error message? (no timeout exception?)
+        def call_map(rs, exception_handler):
+            grequests.map(rs, exception_handler=exception_handler)
+
+        if self.active == 0:
+            return
+        elif self.active == -1:
+            self.active = 1
+            def exception_handler(request, exception):
+                self.active = 0            
+            threading.Thread(target=call_map, args=(rs,exception_handler)).start()
+        else:
+            threading.Thread(target=call_map, args=(rs,None)).start()
 
 
 def reset(newColumns, player, stars, screen, leds):
