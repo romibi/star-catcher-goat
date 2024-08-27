@@ -57,11 +57,11 @@ class GameConfig():
 
         # game end
         self.STAR_STOP_SPAWN_FRAMECOUNT = 1120; # no more stars after 112 seconds
-        self.GAME_END_FRAMECOUNT = 1200; # stop game loop after 120 seconds
+        self.END_FRAMECOUNT = 1200; # stop game loop after 120 seconds
 
         # how many stars? 3x6 or 6x6
-        self.GAME_ROWS = 6;
-        self.GAME_COLUMNS = 6; # code works with 3 or 6 columns
+        self.ROWS = 6;
+        self.COLUMNS = 6; # code works with 3 or 6 columns
 
 
 class GameVisualizationConfig():
@@ -112,6 +112,13 @@ GAME_VIZ_CONF = GameVisualizationConfig()
 RECORDING = None
 
 def InitRecording():
+    """
+    Remarks:
+    - lowercase values are important for replay
+    - UPPER_CASE_VALUES are unlikely to change often between recordings (dependent on game version)
+    - rows is unlikely to change as well but lowercase because columns is also lowercase
+    - columns can currently either be 3 or 6
+    """
     global RECORDING
     RECORDING = {
                     "seed": None,
@@ -129,9 +136,9 @@ def InitRecording():
                                 "FRAME_RATE": GAME_CONFIG.FRAME_RATE,
                                 "STAR_MOVE_RATE": GAME_CONFIG.STAR_MOVE_RATE,
                                 "STAR_STOP_SPAWN_FRAMECOUNT": GAME_CONFIG.STAR_STOP_SPAWN_FRAMECOUNT,
-                                "GAME_END_FRAMECOUNT": GAME_CONFIG.GAME_END_FRAMECOUNT,
-                                "columns": GAME_CONFIG.GAME_COLUMNS,
-                                "rows": GAME_CONFIG.GAME_ROWS
+                                "END_FRAMECOUNT": GAME_CONFIG.END_FRAMECOUNT,
+                                "columns": GAME_CONFIG.COLUMNS,
+                                "rows": GAME_CONFIG.ROWS
                             }
     RECORDING["seed"] = time.time()
 
@@ -150,12 +157,12 @@ def ApplyRecordingSettings():
         if "FRAME_RATE" in settings: GAME_CONFIG.FRAME_RATE = settings["FRAME_RATE"]
         if "STAR_MOVE_RATE" in settings: GAME_CONFIG.STAR_MOVE_RATE = settings["STAR_MOVE_RATE"]
         if "STAR_STOP_SPAWN_FRAMECOUNT" in settings: GAME_CONFIG.STAR_STOP_SPAWN_FRAMECOUNT = settings["STAR_STOP_SPAWN_FRAMECOUNT"]
-        if "GAME_END_FRAMECOUNT" in settings: GAME_CONFIG.GAME_END_FRAMECOUNT = settings["GAME_END_FRAMECOUNT"]
-        if "rows" in settings: GAME_CONFIG.GAME_ROWS = settings["rows"]
+        if "END_FRAMECOUNT" in settings: GAME_CONFIG.END_FRAMECOUNT = settings["END_FRAMECOUNT"]
+        if "rows" in settings: GAME_CONFIG.ROWS = settings["rows"]
         if "columns" in settings:
-            GAME_CONFIG.GAME_COLUMNS = settings["columns"]
+            GAME_CONFIG.COLUMNS = settings["columns"]
         elif "columns" in RECORDING:
-            GAME_CONFIG.GAME_COLUMNS = RECORDING["columns"] # very first few recordings had columns directly in main dict
+            GAME_CONFIG.COLUMNS = RECORDING["columns"] # very first few recordings had columns directly in main dict
 
 
 def save_recording(points=None):
@@ -184,7 +191,7 @@ def load_last_recording():
     global RECORDING
     try:
         gameMode = ""
-        if GAME_CONFIG.GAME_COLUMNS == 3:
+        if GAME_CONFIG.COLUMNS == 3:
             gameMode = "_easy"
 
         filename = os.path.join(main_dir, "recordings", f"recording_last{gameMode}.pickle")
@@ -299,10 +306,10 @@ class LedHandler():
         if HUB_ADDR_STAR_6 != '':
             self.AddStarHub(6, HUB_ADDR_STAR_6)
 
-        for row in range(GAME_CONFIG.GAME_ROWS):
+        for row in range(GAME_CONFIG.ROWS):
             self.stars[row] = {}
             self.leds[row] = {}
-            for column in range(GAME_CONFIG.GAME_COLUMNS):
+            for column in range(GAME_CONFIG.COLUMNS):
                 self.stars[row][column] = {}
                 self.leds[row][column] = {}
 
@@ -401,9 +408,9 @@ def ResetGame(newColumns, player, stars, screen, leds, clear_recording=True):
     leds.UpdateLeds()
 
     GAME_CONFIG.reset() # restore default values (in case recording replay manipulated them)
-    GAME_CONFIG.GAME_COLUMNS = newColumns
+    GAME_CONFIG.COLUMNS = newColumns
 
-    if GAME_CONFIG.GAME_COLUMNS == 3:
+    if GAME_CONFIG.COLUMNS == 3:
         GAME_VIZ_CONF.vizRects = GAME_VIZ_CONF.vizRects3
         leds.ledSegmentMap = leds.ledSegmentMap3
     else:
@@ -434,7 +441,7 @@ def replay(recording, player, stars, screen, leds):
     RECORDING = recording
     ApplyRecordingSettings()
 
-    ResetGame(GAME_CONFIG.GAME_COLUMNS, player, stars, screen, leds, False)
+    ResetGame(GAME_CONFIG.COLUMNS, player, stars, screen, leds, False)
     GAME_STATE.REPLAY = True
     random.seed(RECORDING["seed"])
 
@@ -457,11 +464,11 @@ class Star(pg.sprite.Sprite):
 
     @property
     def hangingLow(self):
-        return self.gridPosY>=(GAME_CONFIG.GAME_ROWS-1)
+        return self.gridPosY>=(GAME_CONFIG.ROWS-1)
 
     def fall(self):
         self.gridPosY += 1
-        if self.gridPosY < GAME_CONFIG.GAME_ROWS:
+        if self.gridPosY < GAME_CONFIG.ROWS:
             self.rect = GAME_VIZ_CONF.vizRects[self.gridPosY][self.gridPosX]
         else:
             self.land()
@@ -544,8 +551,8 @@ class Player(pg.sprite.Sprite):
         self.rect = GAME_VIZ_CONF.vizGoatRects[int(self.gridPos*2)+max(self.facing,0)]
 
     def moveInGrid(self):        
-        maxGoatPos = round(GAME_CONFIG.GAME_COLUMNS/2)-1
-        if GAME_CONFIG.GAME_COLUMNS == 3:
+        maxGoatPos = round(GAME_CONFIG.COLUMNS/2)-1
+        if GAME_CONFIG.COLUMNS == 3:
             maxGoatPos = 2
 
         if self.facing < 0:
@@ -567,7 +574,7 @@ class Player(pg.sprite.Sprite):
         turned = (self.facing != direction)
         self.facing = direction
 
-        if (not turned) or (GAME_CONFIG.GAME_COLUMNS == 3):
+        if (not turned) or (GAME_CONFIG.COLUMNS == 3):
             self.moveInGrid()        
 
         #print(f"gridPos: {self.gridPos}, facing: {self.facing}")
@@ -601,14 +608,14 @@ class Player(pg.sprite.Sprite):
 
     @property
     def HornColumn(self):
-        if GAME_CONFIG.GAME_COLUMNS == 3:
+        if GAME_CONFIG.COLUMNS == 3:
             return self.gridPos
         return self.gridPos * 2 + max(self.facing,0)
 
 
     @property
     def ButtColumn(self):
-        if GAME_CONFIG.GAME_COLUMNS == 3:
+        if GAME_CONFIG.COLUMNS == 3:
             return -1 # no butt column
         return self.gridPos*2 + (1-max(self.facing,0))
 
@@ -779,7 +786,7 @@ def spawnNewStarRow(stars, stargroups):
         #print(f"FRAME: {FRAME_COUNT}: likelyHood: {starLikelyhood}, draw: {randomDraw}, spawn: {spawnStar}")
 
         if spawnStar:
-            spawnColumn = random.randint(0, GAME_CONFIG.GAME_COLUMNS-1);
+            spawnColumn = random.randint(0, GAME_CONFIG.COLUMNS-1);
             #print(f"Spawning at {spawnColumn}")
             Star(spawnColumn, stargroups)
 
@@ -874,6 +881,8 @@ def main(winstyle=0):
         if GAME_STATE.CURRENT_MENU:
             GAME_STATE.CURRENT_MENU.Loop()
         else:
+            # todo: move scoreText, statText, statMissedText, gameButtons, endButtons and background to some GUI class/object contained in GAME_STATE
+            # todo: move player, stars, leds,, gameSpprites, screen and background to GAME_STATE
             PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButtons, endButtons, gameSprites, screen, background)
             GAME_STATE.MENU_JUST_CLOSED = False
 
@@ -884,11 +893,12 @@ def main(winstyle=0):
     leds.UpdateLeds()
 
     if pg.mixer:
+        # todo: really add music and maybe some sample trigger commands to controller
         pg.mixer.music.fadeout(1000)
     pg.time.wait(1000)
 
 def ReRenderBackground(screen):
-    if GAME_CONFIG.GAME_COLUMNS == 3:
+    if GAME_CONFIG.COLUMNS == 3:
         bgdtile = load_image("backgroundB.png")
     else:
         bgdtile = load_image("background.png")
@@ -1047,7 +1057,7 @@ def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButto
     punkte = max(((player.starsCatchedHorn*10)+player.starsCatchedButt-GAME_STATE.StarsMissed),0)
     scoreText.text = f"{punkte}"
 
-    if GAME_CONFIG.GAME_COLUMNS == 3:
+    if GAME_CONFIG.COLUMNS == 3:
         statText.text = f"Gefangen: {player.starsCatchedHorn}"
     else:
         statText.text = f"Gefangen: (Horn/Total): {player.starsCatchedHorn}/{player.starsCatchedHorn+player.starsCatchedButt}"
@@ -1055,13 +1065,14 @@ def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButto
     statMissedText.text = f"Verpasst: {GAME_STATE.StarsMissed}"
 
 
-    if (GAME_STATE.FRAME_COUNT == 1) or (GAME_STATE.FRAME_COUNT == GAME_CONFIG.GAME_END_FRAMECOUNT):
+    if (GAME_STATE.FRAME_COUNT == 1) or (GAME_STATE.FRAME_COUNT == GAME_CONFIG.END_FRAMECOUNT):
         for button in gameButtons:
             button.paused = GAME_STATE.FRAME_COUNT != 1
         for button in endButtons:
-            button.paused = GAME_STATE.FRAME_COUNT != GAME_CONFIG.GAME_END_FRAMECOUNT
+            button.paused = GAME_STATE.FRAME_COUNT != GAME_CONFIG.END_FRAMECOUNT
 
-    if (GAME_STATE.FRAME_COUNT == GAME_CONFIG.GAME_END_FRAMECOUNT) and (not GAME_STATE.REPLAY):
+    if (GAME_STATE.FRAME_COUNT == GAME_CONFIG.END_FRAMECOUNT) and (not GAME_STATE.REPLAY):
+        # todo: Add Hi-Score Name enter screen and Hi-Score list
         save_recording(punkte)
 
     # re-draw whole background
