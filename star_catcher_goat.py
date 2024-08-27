@@ -83,12 +83,15 @@ REPLAY = False
 def save_recording(points=None):
     try:
         filedate = time.strftime("%Y%m%d-%H%M%S")
-        filename = f"recordings/recording_{filedate}.pickle"
+        gameMode = ""
+        if RECORDING["columns"] == 3:
+            gameMode = "_easy"
+        filename = f"recordings/recording_{filedate}{gameMode}.pickle"
         if points:
-            filename = f"recordings/recording_{filedate}_{points}.pickle"
-        with open("recordings/recording_last.pickle", "wb") as f:
+            filename = f"recordings/recording_{filedate}{gameMode}_{points}.pickle"
+        with open(f"recordings/recording_last{gameMode}.pickle", "wb") as f:
             pickle.dump(RECORDING, f, protocol=pickle.HIGHEST_PROTOCOL)
-            print("Saved recording_last.pickle")
+            print(f"Saved recording_last{gameMode}.pickle")
         with open(filename, "wb") as f:
             pickle.dump(RECORDING, f, protocol=pickle.HIGHEST_PROTOCOL)
             print(f"Saved {filename}")
@@ -98,9 +101,12 @@ def save_recording(points=None):
 def load_last_recording():
     global RECORDING
     try:
-        with open("recordings/recording_last.pickle", "rb") as f:
+        gameMode = ""
+        if GAME_COLUMNS == 3:
+            gameMode = "_easy"
+        with open(f"recordings/recording_last{gameMode}.pickle", "rb") as f:
             RECORDING = pickle.load(f)
-            print("Loaded recording_last.pickle")
+            print(f"Loaded recording_last{gameMode}.pickle")
         if RECORDING["gamever"] != CURRENT_GAME_VERSION:
             print("Warning: loaded game recording was recorded with a different version! Replay might differ!")
     except exception as ex:
