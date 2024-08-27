@@ -495,7 +495,7 @@ class Player(pg.sprite.Sprite):
         turned = (self.facing != direction)
         self.facing = direction
 
-        if not turned:
+        if (not turned) or (GAME_COLUMNS == 3):
             self.moveInGrid()        
 
         #print(f"gridPos: {self.gridPos}, facing: {self.facing}")
