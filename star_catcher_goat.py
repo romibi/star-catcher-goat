@@ -22,7 +22,10 @@ MAX_STARS = 2 # max stars per row
 
 # LED Stuff
 STAR_COLOR = 'FF9000';
-STAR_BRIGHTNESS = 255;
+BRIGHTNESS_MOD = 0; # modifying 0=ALL, 1=A, 2=B, 3=G
+STAR_BRIGHTNESS_A = 255; # row 0-2
+STAR_BRIGHTNESS_B = 255; # row 3-5
+GOAT_BRIGHTNESS = 255;
 
 HUB_ADDR_STAR_1 = '192.168.1.107';
 HUB_ADDR_STAR_2 = '';
@@ -217,13 +220,23 @@ class LedHandler():
             self.stars[row][column]['color'] = color
 
 
-    def SetAllStarsOff(self):
+    def SetAllLedsOff(self):
         for row, starRow in self.stars.items():
             for column, star in starRow.items():
                 self.SetStarLed(row, column, 0)
 
 
-    def UpdateStars(self):
+    def UpdateBrightness(self, newBrightnessA, newBrightnessB, newBrightnessG):
+        for row, starRow in self.stars.items():
+            for column, star in starRow.items():
+                if star.get('bright', 0) > 0:
+                    if row > 2:
+                        star['bright'] = newBrightnessB
+                    else:
+                        star['bright'] = newBrightnessA
+
+
+    def UpdateLeds(self):
         urls = []
         for row, starRow in self.stars.items():
             for column, star in starRow.items():
@@ -267,8 +280,8 @@ class LedHandler():
 def reset(newColumns, player, stars, screen, leds):
     global GAME_COLUMNS, FRAME_COUNT, GAME_StarsMissed, vizRects, ledSegmentMap
 
-    leds.SetAllStarsOff()
-    leds.UpdateStars()
+    leds.SetAllLedsOff()
+    leds.UpdateLeds()
 
     GAME_COLUMNS = newColumns
 
@@ -492,6 +505,7 @@ class UiText(pg.sprite.Sprite):
         self.color = "white"
         self.lastText = None
         self.lastTargetRect = None
+        self.textFunc = None
         self.targetRect = Rect(0,0,0,0)
         self.align = -1 # -1 left, 0 center, 1 right
         self.update()
@@ -500,6 +514,9 @@ class UiText(pg.sprite.Sprite):
 
     def update(self, *args, **kwargs):
         """We only update the score in update() when it has changed."""
+        if self.textFunc:
+            self.text = self.textFunc()
+
         if (self.text != self.lastText) or (self.targetRect != self.lastTargetRect):
             self.lastText = self.text
             self.lastTargetRect = self.targetRect
@@ -551,7 +568,10 @@ class MenuScreen():
         nextPos = 100
         for menuEntry in menuOptionMap.keys():
             entry = UiText(self.sprites);
-            entry.text = menuEntry
+            if type(menuEntry) == str:
+                entry.text = menuEntry
+            elif callable(menuEntry):
+                entry.textFunc = menuEntry
             entry.targetRect = Rect(100, nextPos, 300, 300)
             nextPos += 50
 
@@ -570,7 +590,7 @@ class MenuScreen():
                 GAME_QUIT = True
                 return
             if event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
-                CloseMenu()
+                CloseMenu(event.key)
                 return
             if event.type == pg.KEYDOWN and event.key == pg.K_DOWN:
                 self.cursorIndex = min(self.cursorIndex+1, len(self.menuOptionMap.keys())-1)
@@ -578,9 +598,9 @@ class MenuScreen():
             if event.type == pg.KEYDOWN and event.key == pg.K_UP:
                 self.cursorIndex = max(self.cursorIndex-1, 0)
                 self.cursor.targetRect = Rect(50, 100+(self.cursorIndex*50), 64, 64)
-            if event.type == pg.KEYDOWN and event.key == pg.K_RETURN:
+            if event.type == pg.KEYDOWN and event.key in [pg.K_RETURN, pg.K_LEFT, pg.K_RIGHT]:
                 menuFuncs = list(self.menuOptionMap.values())
-                func = menuFuncs[self.cursorIndex]()
+                menuFuncs[self.cursorIndex](event.key)
 
         if self.frame == 0:
             self.screen.blit(self.background, (0, 0))
@@ -626,13 +646,13 @@ def spawnNewStarRow(stars, stargroups):
 
 
 
-def CloseMenu():
+def CloseMenu(key):
     global CURRENT_MENU, MENU_JUST_CLOSED
     CURRENT_MENU = False
     MENU_JUST_CLOSED = True
 
 
-def QuitGame():
+def QuitGame(key):
     global GAME_QUIT
     GAME_QUIT = True
 
@@ -730,8 +750,8 @@ def main(winstyle=0):
         # cap the framerate at 10fps. Also called 10HZ or 10 times per second.
         clock.tick(FRAME_RATE)
 
-    leds.SetAllStarsOff()
-    leds.UpdateStars()
+    leds.SetAllLedsOff()
+    leds.UpdateLeds()
 
     if pg.mixer:
         pg.mixer.music.fadeout(1000)
@@ -753,15 +773,98 @@ def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButto
     global FRAME_COUNT
     FRAME_COUNT += 1
 
-    def Reset6():
-        CloseMenu()
+    def Reset6(key):
+        CloseMenu(key)
         reset(6, player, stars, screen, leds)
 
-    def Reset3():
-        CloseMenu()
+    def Reset3(key):
+        CloseMenu(key)
         reset(3, player, stars, screen, leds)
 
-    
+    def LedText():
+        if leds.active == 1:
+            return "LED Ein/Aus: EIN"
+        else:
+            return "LED Ein/Aus: AUS"
+
+    def ToggleLedActive(key):
+        if leds.active == 1:
+            leds.SetAllLedsOff()
+            leds.UpdateLeds()
+            leds.active = 0
+        else:
+            leds.active = 1
+
+    def LedBrightText():
+        if (BRIGHTNESS_MOD != 0) or (STAR_BRIGHTNESS_A != STAR_BRIGHTNESS_B) or (STAR_BRIGHTNESS_A != GOAT_BRIGHTNESS) or (STAR_BRIGHTNESS_B != GOAT_BRIGHTNESS):
+            if BRIGHTNESS_MOD == 0:
+                return f"LED Helligkeit: [{STAR_BRIGHTNESS_A}|{STAR_BRIGHTNESS_B}|{GOAT_BRIGHTNESS}]"
+            elif BRIGHTNESS_MOD == 1:
+                return f"LED Helligkeit: [{STAR_BRIGHTNESS_A}]|{STAR_BRIGHTNESS_B}|{GOAT_BRIGHTNESS}"
+            elif BRIGHTNESS_MOD == 2:
+                return f"LED Helligkeit: {STAR_BRIGHTNESS_A}|[{STAR_BRIGHTNESS_B}]|{GOAT_BRIGHTNESS}"
+            elif BRIGHTNESS_MOD == 3:
+                return f"LED Helligkeit: {STAR_BRIGHTNESS_A}|{STAR_BRIGHTNESS_B}|[{GOAT_BRIGHTNESS}]"
+        else:
+            return f"LED Helligkeit: {STAR_BRIGHTNESS_A}"
+
+    def LedBright(key):
+        global BRIGHTNESS_MOD, STAR_BRIGHTNESS_A, STAR_BRIGHTNESS_B, GOAT_BRIGHTNESS
+        modifiers = pg.key.get_mods()
+
+        if (key == pg.K_RETURN) and (modifiers & pg.KMOD_LSHIFT):
+            BRIGHTNESS_MOD += 1
+            if BRIGHTNESS_MOD>3:
+                BRIGHTNESS_MOD = 0
+            return
+
+        modVal = 10
+        if modifiers & pg.KMOD_LSHIFT:
+            modVal = 1
+        elif modifiers & pg.KMOD_LCTRL:
+            modVal = 50
+
+        if key == pg.K_LEFT:
+            if BRIGHTNESS_MOD == 0 or BRIGHTNESS_MOD == 1:
+                STAR_BRIGHTNESS_A = max(STAR_BRIGHTNESS_A-modVal, 1)
+            if BRIGHTNESS_MOD == 0 or BRIGHTNESS_MOD == 2:
+                STAR_BRIGHTNESS_B = max(STAR_BRIGHTNESS_B-modVal, 1)
+            if BRIGHTNESS_MOD == 0 or BRIGHTNESS_MOD == 3:
+                GOAT_BRIGHTNESS = max(GOAT_BRIGHTNESS-modVal, 1)
+        if key == pg.K_RIGHT:
+            if BRIGHTNESS_MOD == 0 or BRIGHTNESS_MOD == 1:
+                STAR_BRIGHTNESS_A = min(STAR_BRIGHTNESS_A+modVal, 255)
+            if BRIGHTNESS_MOD == 0 or BRIGHTNESS_MOD == 2:
+                STAR_BRIGHTNESS_B = min(STAR_BRIGHTNESS_B+modVal, 255)
+            if BRIGHTNESS_MOD == 0 or BRIGHTNESS_MOD == 3:
+                GOAT_BRIGHTNESS = min(GOAT_BRIGHTNESS+modVal, 255)
+        if key == pg.K_RETURN:
+            if BRIGHTNESS_MOD == 0 or BRIGHTNESS_MOD == 1:
+                if STAR_BRIGHTNESS_A > 255/2:
+                    newBright = 10
+                else:
+                    newBright = 255
+            if BRIGHTNESS_MOD == 2:
+                if STAR_BRIGHTNESS_B > 255/2:
+                    newBright = 10
+                else:
+                    newBright = 255
+            if BRIGHTNESS_MOD == 3:                
+                if GOAT_BRIGHTNESS > 255/2:
+                    newBright = 10
+                else:
+                    newBright = 255            
+
+            if BRIGHTNESS_MOD == 0 or BRIGHTNESS_MOD == 1:
+                STAR_BRIGHTNESS_A = newBright
+            if BRIGHTNESS_MOD == 0 or BRIGHTNESS_MOD == 2:
+                STAR_BRIGHTNESS_B = newBright
+            if BRIGHTNESS_MOD == 0 or BRIGHTNESS_MOD == 3:
+                GOAT_BRIGHTNESS = newBright            
+        leds.UpdateBrightness(STAR_BRIGHTNESS_A, STAR_BRIGHTNESS_B, GOAT_BRIGHTNESS)
+        leds.UpdateLeds()
+
+
     # get input
     for event in pg.event.get():
         if event.type == pg.QUIT:
@@ -770,13 +873,13 @@ def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButto
             return
         if event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
             global CURRENT_MENU
-            CURRENT_MENU = MenuScreen(screen, {"Zurück zum Spiel": CloseMenu, "Spiel neustarten (Normal)": Reset6, "Spiel neustarten (Einfach)": Reset3, "Spiel Beenden": QuitGame})
+            CURRENT_MENU = MenuScreen(screen, {"Zurück zum Spiel": CloseMenu, LedText: ToggleLedActive, LedBrightText: LedBright, "Neues Spiel (Normal)": Reset6, "Neues Spiel (Einfach)": Reset3, "Spiel Beenden": QuitGame})
             return
         if event.type == pg.KEYDOWN and event.key == pg.K_PAGEUP:
-            Reset6()
+            Reset6(event.key)
             return
         if event.type == pg.KEYDOWN and event.key == pg.K_PAGEDOWN:
-            Reset3()
+            Reset3(event.key)
             return
         if event.type == pg.KEYDOWN and event.key == pg.K_RIGHT:
             player.move(1)
@@ -813,7 +916,7 @@ def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButto
     # clear/erase the last drawn sprites
     gameSprites.clear(screen, background)
     
-    leds.SetAllStarsOff()
+    leds.SetAllLedsOff()
 
     # make stars land on player before update
     for star in stars:
@@ -824,7 +927,10 @@ def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButto
     gameSprites.update()
 
     for star in stars:
-        leds.SetStarLed(star.gridPosY, star.gridPosX, STAR_BRIGHTNESS)
+        bright = STAR_BRIGHTNESS_A
+        if star.gridPosY > 2:
+            bright = STAR_BRIGHTNESS_B
+        leds.SetStarLed(star.gridPosY, star.gridPosX, bright)
 
     # handle player input
     #direction = keystate[pg.K_RIGHT] - keystate[pg.K_LEFT]
@@ -841,7 +947,7 @@ def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButto
 
     spawnNewStarRow(stars, (stars, gameSprites))
 
-    leds.UpdateStars()
+    leds.UpdateLeds()
 
     #print(f"starsCatchedHorn: {player.starsCatchedHorn}, starsCatchedButt:  {player.starsCatchedButt}, starsMissed: {GAME_StarsMissed}");
 
