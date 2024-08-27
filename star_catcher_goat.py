@@ -8,10 +8,26 @@ from pygame import Rect
 import grequests
 from enum import Enum
 import threading
+import time
+import subprocess
+import pickle
 
 # see if we can load more than standard BMP
 if not pg.image.get_extended():
     raise SystemExit("Sorry, extended image module required")
+
+# Try to get the game version for versioning REPLAY data in future
+CURRENT_GAME_VERSION = "(unknown)"
+
+def get_git_revision_hash() -> str:
+    return subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode('ascii').strip()
+
+try:
+    CURRENT_GAME_VERSION = get_git_revision_hash()
+except:
+    pass
+
+print(f"Running game version {CURRENT_GAME_VERSION}")
 
 # difficulty settings
 STAR_BASE_LIKELYHOOD = 0.3 # at start 30% chance of 1 star. (15% for 2nd star)
@@ -60,6 +76,36 @@ main_dir = os.path.split(os.path.abspath(__file__))[0]
 CURRENT_MENU = None
 MENU_JUST_CLOSED = False
 GAME_QUIT = False
+
+RECORDING = {"seed": None, "columns": GAME_COLUMNS, "movements": [], "gamever": CURRENT_GAME_VERSION}
+REPLAY = False
+
+def save_recording(points=None):
+    try:
+        filedate = time.strftime("%Y%m%d-%H%M%S")
+        filename = f"recordings/recording_{filedate}.pickle"
+        if points:
+            filename = f"recordings/recording_{filedate}_{points}.pickle"
+        with open("recordings/recording_last.pickle", "wb") as f:
+            pickle.dump(RECORDING, f, protocol=pickle.HIGHEST_PROTOCOL)
+            print("Saved recording_last.pickle")
+        with open(filename, "wb") as f:
+            pickle.dump(RECORDING, f, protocol=pickle.HIGHEST_PROTOCOL)
+            print(f"Saved {filename}")
+    except exception as ex:
+        print("Error during pickling object (Possibly unsupported):", ex)
+
+def load_last_recording():
+    global RECORDING
+    try:
+        with open("recordings/recording_last.pickle", "rb") as f:
+            RECORDING = pickle.load(f)
+            print("Loaded recording_last.pickle")
+        if RECORDING["gamever"] != CURRENT_GAME_VERSION:
+            print("Warning: loaded game recording was recorded with a different version! Replay might differ!")
+    except exception as ex:
+        print("Error during pickling object (Possibly unsupported):", ex)
+
 
 # helper functions
 def load_image(file):
@@ -277,8 +323,8 @@ class LedHandler():
             threading.Thread(target=call_map, args=(rs,None)).start()
 
 
-def reset(newColumns, player, stars, screen, leds):
-    global GAME_COLUMNS, FRAME_COUNT, GAME_StarsMissed, vizRects, ledSegmentMap
+def reset(newColumns, player, stars, screen, leds, clear_recording=True):
+    global GAME_COLUMNS, FRAME_COUNT, GAME_StarsMissed, RECORDING, vizRects, ledSegmentMap, REPLAY
 
     leds.SetAllLedsOff()
     leds.UpdateLeds()
@@ -293,9 +339,7 @@ def reset(newColumns, player, stars, screen, leds):
         ledSegmentMap = ledSegmentMap6
 
     leds.reset()
-
-    player.starsCatchedHorn = 0
-    player.starsCatchedButt = 0
+    player.reset()
     GAME_StarsMissed = 0
 
     for star in stars:
@@ -304,7 +348,22 @@ def reset(newColumns, player, stars, screen, leds):
     ReRenderBackground(screen)
     pg.display.flip()
 
+    if clear_recording:
+        RECORDING = {"seed": time.time(), "columns": GAME_COLUMNS, "movements": [], "gamever": CURRENT_GAME_VERSION}
+        random.seed(RECORDING["seed"])
+
+    REPLAY=False
     FRAME_COUNT = 0
+
+
+def replay(recording, player, stars, screen, leds):
+    global RECORDING, REPLAY
+    #print(f"Replaying {recording}")
+    RECORDING = recording
+    reset(recording["columns"], player, stars, screen, leds, False)
+    REPLAY = True
+    random.seed(RECORDING["seed"])
+
 
 class Star(pg.sprite.Sprite):
 
@@ -379,6 +438,15 @@ class Player(pg.sprite.Sprite):
         self.origtop = self.rect.top
         self.updateImage()
         self.updateRect()
+
+    def reset(self):
+        self.starsCatchedHorn = 0
+        self.starsCatchedButt = 0
+        self.facing = -1
+        self.gridPos = 1
+        self.updateImage()
+        self.updateRect()
+
 
     def updateImage(self):
         if self.facing < 0:
@@ -478,7 +546,7 @@ class Player(pg.sprite.Sprite):
             if star.gridPosX == self.HornColumn:
                 self.starsCatchedHorn += 1
                 self.HornGlow()
-                print(f"Catching Star: x:{star.gridPosX} y:{star.gridPosX}")
+                #print(f"Catching Star: x:{star.gridPosX} y:{star.gridPosX}")
                 star.kill()
         return
 
@@ -637,7 +705,7 @@ def spawnNewStarRow(stars, stargroups):
             spawnStar=True
             starCount += 1
 
-        #print(f"likelyHood: {starLikelyhood}, draw: {randomDraw}, spawn: {spawnStar}")
+        #print(f"FRAME: {FRAME_COUNT}: likelyHood: {starLikelyhood}, draw: {randomDraw}, spawn: {spawnStar}")
 
         if spawnStar:
             spawnColumn = random.randint(0, GAME_COLUMNS-1);
@@ -737,6 +805,9 @@ def main(winstyle=0):
         statMissedText = UiText(gameSprites)
         statMissedText.targetRect = Rect(739,550, 510, 50)
         statMissedText.color = "grey"
+
+    # reset before first loop to have same random staring condition as in replay
+    reset(6, player, stars, screen, leds)
 
     # Run our main loop whilst the player is alive.
     while player.alive() and not GAME_QUIT:
@@ -882,11 +953,36 @@ def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButto
             Reset3(event.key)
             return
         if event.type == pg.KEYDOWN and event.key == pg.K_RIGHT:
-            player.move(1)
+            if not REPLAY:
+                RECORDING["movements"].append({"frame": FRAME_COUNT, "key": event.key});
+                player.move(1)
         if event.type == pg.KEYDOWN and event.key == pg.K_LEFT:
-            player.move(-1)
+            if not REPLAY:
+                RECORDING["movements"].append({"frame": FRAME_COUNT, "key": event.key});
+                player.move(-1)
         if event.type == pg.KEYDOWN and event.key == pg.K_UP:
-            player.jump([star for star in stars if star.hangingLow])
+            if not REPLAY:
+                RECORDING["movements"].append({"frame": FRAME_COUNT, "key": event.key});
+                player.jump([star for star in stars if star.hangingLow])
+        if event.type == pg.KEYDOWN and ((event.key == pg.K_F7) or (event.key == pg.K_F10)):
+            load_last_recording()
+            replay(RECORDING, player, stars, screen, leds)
+            return
+        if event.type == pg.KEYDOWN and ((event.key == pg.K_F8) or (event.key == pg.K_F11)):
+            replay(RECORDING, player, stars, screen, leds)
+            return
+
+    if REPLAY:
+        for movement in RECORDING["movements"]:
+            if movement["frame"] > FRAME_COUNT:
+                break
+            if movement["frame"] == FRAME_COUNT:
+                if movement["key"] == pg.K_RIGHT:
+                    player.move(1)
+                if movement["key"] == pg.K_LEFT:
+                    player.move(-1)
+                if movement["key"] == pg.K_UP:
+                    player.jump([star for star in stars if star.hangingLow])
 
     keystate = pg.key.get_pressed()
 
@@ -908,6 +1004,8 @@ def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButto
         for button in endButtons:
             button.paused = FRAME_COUNT != GAME_END_FRAMECOUNT
 
+    if (FRAME_COUNT == GAME_END_FRAMECOUNT) and (not REPLAY):
+        save_recording(punkte)
 
     # re-draw whole background
     if MENU_JUST_CLOSED:
