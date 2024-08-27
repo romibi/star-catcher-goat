@@ -29,56 +29,80 @@ except:
 
 print(f"Running game version {CURRENT_GAME_VERSION}")
 
-# difficulty settings
-STAR_BASE_LIKELYHOOD = 0.3 # at start 30% chance of 1 star. (15% for 2nd star)
-STAR_MAX_LIKELYHOOD = 0.95 # max chance of 95% for 1 star (47.5% for 2nd star)
-STAR_TIMER_LIKELYHOOD = 0.0005 # star spawn likely hood increase over time
-FORCE_STAR_SPAWN_MIN = 2 # if 2 or less stars 1 star spawns 100%
-MAX_STARS = 2 # max stars per row
-
-# LED Stuff
-STAR_COLOR = 'FF9000';
-BRIGHTNESS_MOD = 0; # modifying 0=ALL, 1=A, 2=B, 3=G
-STAR_BRIGHTNESS_A = 255; # row 0-2
-STAR_BRIGHTNESS_B = 255; # row 3-5
-GOAT_BRIGHTNESS = 255;
-
-HUB_ADDR_STAR_1 = '192.168.1.107';
-HUB_ADDR_STAR_2 = '';
-HUB_ADDR_STAR_3 = '';
-HUB_ADDR_STAR_4 = '';
-HUB_ADDR_STAR_5 = '';
-HUB_ADDR_STAR_6 = '';
-
-# change color of segment 1 (0) to green: http://192.168.1.107/win&SM=0&SB=255&CL=H00FF00
-API_ADDR = '/win';
-API_ARG_SEGMENT = '&SM=';
-API_ARG_BRIGHTNES = '&SB=';
-API_ARG_COLOR = '&CL=H'
-
-# speed
-FRAME_COUNT = 0
-FRAME_RATE = 10; # fps
-STAR_MOVE_RATE = 10; # stars move every x frames
-
-# game end
-STAR_STOP_SPAWN_FRAMECOUNT = 1120; # no more stars after 112 seconds
-GAME_END_FRAMECOUNT = 1200; # stop game loop after 120 seconds
-
-# how many stars? 3x6 or 6x6
-GAME_ROWS = 6;
-GAME_COLUMNS = 6; # code works with 3 or 6 columns
-
-SCREENRECT = pg.Rect(0, 0, 1280, 720)
+HUB_ADDR_STAR_1 = '192.168.1.107'
+HUB_ADDR_STAR_2 = ''
+HUB_ADDR_STAR_3 = ''
+HUB_ADDR_STAR_4 = ''
+HUB_ADDR_STAR_5 = ''
+HUB_ADDR_STAR_6 = ''
 
 main_dir = os.path.split(os.path.abspath(__file__))[0]
 
-CURRENT_MENU = None
-MENU_JUST_CLOSED = False
-GAME_QUIT = False
+class GameConfig():
+    # difficulty settings
+    STAR_BASE_LIKELYHOOD = 0.3 # at start 30% chance of 1 star. (15% for 2nd star)
+    STAR_MAX_LIKELYHOOD = 0.95 # max chance of 95% for 1 star (47.5% for 2nd star)
+    STAR_TIMER_LIKELYHOOD = 0.0005 # star spawn likely hood increase over time
+    FORCE_STAR_SPAWN_MIN = 2 # if 2 or less stars 1 star spawns 100%
+    MAX_STARS = 2 # max stars per row
 
-RECORDING = {"seed": None, "columns": GAME_COLUMNS, "movements": [], "gamever": CURRENT_GAME_VERSION}
-REPLAY = False
+    # speed
+    FRAME_RATE = 10; # fps
+    STAR_MOVE_RATE = 10; # stars move every x frames
+
+    # game end
+    STAR_STOP_SPAWN_FRAMECOUNT = 1120; # no more stars after 112 seconds
+    GAME_END_FRAMECOUNT = 1200; # stop game loop after 120 seconds
+
+    # how many stars? 3x6 or 6x6
+    GAME_ROWS = 6;
+    GAME_COLUMNS = 6; # code works with 3 or 6 columns
+
+class GameVisualizationConfig():
+    # vizPos für 3 columns
+    vizRects3 = [
+       [ Rect(84,  72, 32, 32),                                                 Rect(372,  72, 32, 32), Rect(552,  72, 32, 32)                        ],
+       [                        Rect(138, 108, 32, 32), Rect(318, 108, 32, 32),                                                 Rect(606, 108, 32, 32)],
+       [ Rect(84, 144, 32, 32),                                                 Rect(372, 144, 32, 32), Rect(552, 144, 32, 32)                        ],
+
+       [                        Rect(138, 288, 32, 32),                         Rect(372, 288, 32, 32),                         Rect(606, 288, 32, 32)],
+       [ Rect(84, 324, 32, 32),                         Rect(318, 324, 32, 32),                         Rect(552, 324, 32, 32)                        ],
+       [                        Rect(138, 360, 32, 32),                         Rect(372, 360, 32, 32),                         Rect(606, 360, 32, 32)]
+    ]
+
+    # vizPos für 6 columns
+    vizRects6 = [
+       [ Rect(84,  72, 32, 32), Rect(138,  72, 32, 32), Rect(318,  72, 32, 32), Rect(372,  72, 32, 32), Rect(552,  72, 32, 32), Rect(606,  72, 32, 32)],
+       [ Rect(84, 108, 32, 32), Rect(138, 108, 32, 32), Rect(318, 108, 32, 32), Rect(372, 108, 32, 32), Rect(552, 108, 32, 32), Rect(606, 108, 32, 32)],
+       [ Rect(84, 144, 32, 32), Rect(138, 144, 32, 32), Rect(318, 144, 32, 32), Rect(372, 144, 32, 32), Rect(552, 144, 32, 32), Rect(606, 144, 32, 32)],
+
+       [ Rect(84, 288, 32, 32), Rect(138, 288, 32, 32), Rect(318, 288, 32, 32), Rect(372, 288, 32, 32), Rect(552, 288, 32, 32), Rect(606, 288, 32, 32)],
+       [ Rect(84, 324, 32, 32), Rect(138, 324, 32, 32), Rect(318, 324, 32, 32), Rect(372, 324, 32, 32), Rect(552, 324, 32, 32), Rect(606, 324, 32, 32)],
+       [ Rect(84, 360, 32, 32), Rect(138, 360, 32, 32), Rect(318, 360, 32, 32), Rect(372, 360, 32, 32), Rect(552, 360, 32, 32), Rect(606, 360, 32, 32)]
+    ]
+
+    vizGoatRects = [ Rect(84, 540, 64, 64), Rect(110, 540, 64, 64), Rect(318, 540, 64, 64), Rect(344, 540, 64, 64), Rect(552, 540, 64, 64), Rect(578, 540, 64, 64)]
+
+    vizRects = None # initialized in setup/reset
+
+
+class GameState():
+    SCREENRECT = pg.Rect(0, 0, 1280, 720)
+
+    CURRENT_MENU = None
+    MENU_JUST_CLOSED = False
+    GAME_QUIT = False
+
+    REPLAY = False
+
+    FRAME_COUNT = 0
+    StarsMissed = 0
+
+
+GAME_CONFIG = GameConfig()
+GAME_STATE = GameState()
+GAME_VIZ_CONF = GameVisualizationConfig()
+RECORDING = {"seed": None, "columns": GAME_CONFIG.GAME_COLUMNS, "movements": [], "gamever": CURRENT_GAME_VERSION}
 
 def save_recording(points=None):
     try:
@@ -86,12 +110,16 @@ def save_recording(points=None):
         gameMode = ""
         if RECORDING["columns"] == 3:
             gameMode = "_easy"
-        filename = f"recordings/recording_{filedate}{gameMode}.pickle"
+        filename = os.path.join(main_dir, "recordings", f"recording_{filedate}{gameMode}.pickle")
         if points:
-            filename = f"recordings/recording_{filedate}{gameMode}_{points}.pickle"
-        with open(f"recordings/recording_last{gameMode}.pickle", "wb") as f:
+            filename = os.path.join(main_dir, "recordings", f"recording_{filedate}{gameMode}_{points}.pickle")
+
+        filename_last = os.path.join(main_dir, "recordings", f"recording_last{gameMode}.pickle")
+
+        with open(filename_last, "wb") as f:
             pickle.dump(RECORDING, f, protocol=pickle.HIGHEST_PROTOCOL)
-            print(f"Saved recording_last{gameMode}.pickle")
+            print(f"Saved {filename_last}")
+
         with open(filename, "wb") as f:
             pickle.dump(RECORDING, f, protocol=pickle.HIGHEST_PROTOCOL)
             print(f"Saved {filename}")
@@ -102,11 +130,15 @@ def load_last_recording():
     global RECORDING
     try:
         gameMode = ""
-        if GAME_COLUMNS == 3:
+        if GAME_CONFIG.GAME_COLUMNS == 3:
             gameMode = "_easy"
-        with open(f"recordings/recording_last{gameMode}.pickle", "rb") as f:
+
+        filename = os.path.join(main_dir, "recordings", f"recording_last{gameMode}.pickle")
+
+        with open(filename, "rb") as f:
             RECORDING = pickle.load(f)
-            print(f"Loaded recording_last{gameMode}.pickle")
+            print(f"Loaded {filename}")
+
         if RECORDING["gamever"] != CURRENT_GAME_VERSION:
             print("Warning: loaded game recording was recorded with a different version! Replay might differ!")
     except exception as ex:
@@ -138,76 +170,54 @@ def load_sound(file):
     return None
 
 
-# game status:
-# let rowTemplate = Array(columns).fill(false);
-# let stars = Array.from(Array(rows), () => [...rowTemplate]);
-# goatPos = 0; # 0 = column 0&1, 1 = column 2&3, 2 = column 4&5
-# goatDir = 0; # 0 = left, 1 = right;
-
-# // missed points (other points in player class)
-GAME_StarsMissed = 0;
-
-# vizPos für 3 columns
-vizRects3 = [
-   [ Rect(84,  72, 32, 32),                                                 Rect(372,  72, 32, 32), Rect(552,  72, 32, 32)                        ],
-   [                        Rect(138, 108, 32, 32), Rect(318, 108, 32, 32),                                                 Rect(606, 108, 32, 32)],
-   [ Rect(84, 144, 32, 32),                                                 Rect(372, 144, 32, 32), Rect(552, 144, 32, 32)                        ],
-
-   [                        Rect(138, 288, 32, 32),                         Rect(372, 288, 32, 32),                         Rect(606, 288, 32, 32)],
-   [ Rect(84, 324, 32, 32),                         Rect(318, 324, 32, 32),                         Rect(552, 324, 32, 32)                        ],
-   [                        Rect(138, 360, 32, 32),                         Rect(372, 360, 32, 32),                         Rect(606, 360, 32, 32)]
-]
-
-# vizPos für 6 columns
-vizRects6 = [
-   [ Rect(84,  72, 32, 32), Rect(138,  72, 32, 32), Rect(318,  72, 32, 32), Rect(372,  72, 32, 32), Rect(552,  72, 32, 32), Rect(606,  72, 32, 32)],
-   [ Rect(84, 108, 32, 32), Rect(138, 108, 32, 32), Rect(318, 108, 32, 32), Rect(372, 108, 32, 32), Rect(552, 108, 32, 32), Rect(606, 108, 32, 32)],
-   [ Rect(84, 144, 32, 32), Rect(138, 144, 32, 32), Rect(318, 144, 32, 32), Rect(372, 144, 32, 32), Rect(552, 144, 32, 32), Rect(606, 144, 32, 32)],
-
-   [ Rect(84, 288, 32, 32), Rect(138, 288, 32, 32), Rect(318, 288, 32, 32), Rect(372, 288, 32, 32), Rect(552, 288, 32, 32), Rect(606, 288, 32, 32)],
-   [ Rect(84, 324, 32, 32), Rect(138, 324, 32, 32), Rect(318, 324, 32, 32), Rect(372, 324, 32, 32), Rect(552, 324, 32, 32), Rect(606, 324, 32, 32)],
-   [ Rect(84, 360, 32, 32), Rect(138, 360, 32, 32), Rect(318, 360, 32, 32), Rect(372, 360, 32, 32), Rect(552, 360, 32, 32), Rect(606, 360, 32, 32)]
-]
-
-vizGoatRects = [ Rect(84, 540, 64, 64), Rect(110, 540, 64, 64), Rect(318, 540, 64, 64), Rect(344, 540, 64, 64), Rect(552, 540, 64, 64), Rect(578, 540, 64, 64)]
-
-# LED info
-# Segment map for when only halve the stars are wired:
-#ledSegmentMap3 = [
-#   [ {"hub": 1, "segment": 2},                                                     {"hub": 2, "segment": 2}, {"hub": 3, "segment": 2}                          ],
-#   [                           {"hub": 1, "segment": 1}, {"hub": 2, "segment": 1},                                                     {"hub": 3, "segment": 1}],
-#   [ {"hub": 1, "segment": 0},                                                     {"hub": 2, "segment": 0}, {"hub": 3, "segment": 0}                          ],
-#
-#   [                           {"hub": 4, "segment": 2},                           {"hub": 5, "segment": 2},                           {"hub": 6, "segment": 2}],
-#   [ {"hub": 4, "segment": 1},                           {"hub": 5, "segment": 1},                           {"hub": 6, "segment": 1},                         ],
-#   [                           {"hub": 4, "segment": 0},                           {"hub": 5, "segment": 0},                           {"hub": 6, "segment": 0}]
-#]
-
-# Segment map for when 6x6 stars are wired but game is in 3x6 mode:
-ledSegmentMap3 = [
-   [ {"hub": 1, "segment": 2},                                                     {"hub": 2, "segment": 3}, {"hub": 3, "segment": 2}                          ],
-   [                           {"hub": 1, "segment": 4}, {"hub": 2, "segment": 1},                                                     {"hub": 3, "segment": 4}],
-   [ {"hub": 1, "segment": 0},                                                     {"hub": 2, "segment": 5}, {"hub": 3, "segment": 0}                          ],
-
-   [                           {"hub": 4, "segment": 3},                           {"hub": 5, "segment": 3},                           {"hub": 6, "segment": 3}],
-   [ {"hub": 4, "segment": 1},                           {"hub": 5, "segment": 1},                           {"hub": 6, "segment": 1},                         ],
-   [                           {"hub": 4, "segment": 5},                           {"hub": 5, "segment": 5},                           {"hub": 6, "segment": 5}]
-]
-
-ledSegmentMap6 = [
-   [ {"hub": 1, "segment": 2}, {"hub": 1, "segment": 3}, {"hub": 2, "segment": 2}, {"hub": 2, "segment": 3}, {"hub": 3, "segment": 2}, {"hub": 3, "segment": 3}],
-   [ {"hub": 1, "segment": 1}, {"hub": 1, "segment": 4}, {"hub": 2, "segment": 1}, {"hub": 2, "segment": 4}, {"hub": 3, "segment": 1}, {"hub": 3, "segment": 4}],
-   [ {"hub": 1, "segment": 0}, {"hub": 1, "segment": 5}, {"hub": 2, "segment": 0}, {"hub": 2, "segment": 5}, {"hub": 3, "segment": 0}, {"hub": 3, "segment": 5}],
-
-   [ {"hub": 4, "segment": 2}, {"hub": 4, "segment": 3}, {"hub": 5, "segment": 2}, {"hub": 5, "segment": 3}, {"hub": 6, "segment": 2}, {"hub": 6, "segment": 3}],
-   [ {"hub": 4, "segment": 1}, {"hub": 4, "segment": 4}, {"hub": 5, "segment": 1}, {"hub": 5, "segment": 4}, {"hub": 6, "segment": 1}, {"hub": 6, "segment": 4}],
-   [ {"hub": 4, "segment": 0}, {"hub": 4, "segment": 5}, {"hub": 5, "segment": 0}, {"hub": 5, "segment": 5}, {"hub": 6, "segment": 0}, {"hub": 6, "segment": 5}]
-]
-
-vizRects = None # initialized in setup/reset
-ledSegmentMap = None # initialized in setup/reset
-
 class LedHandler():
+    STAR_COLOR = 'FF9000'
+    BRIGHTNESS_MOD = 0 # modifying 0=ALL, 1=A, 2=B, 3=G
+    STAR_BRIGHTNESS_A = 255 # row 0-2
+    STAR_BRIGHTNESS_B = 255 # row 3-5
+    GOAT_BRIGHTNESS = 255
+
+    # change color of segment 1 (0) to green: http://192.168.1.107/win&SM=0&SB=255&CL=H00FF00
+    API_ADDR = '/win'
+    API_ARG_SEGMENT = '&SM='
+    API_ARG_BRIGHTNES = '&SB='
+    API_ARG_COLOR = '&CL=H'
+
+
+    # Segment map for when only halve the stars are wired:
+    #ledSegmentMap3 = [
+    #   [ {"hub": 1, "segment": 2},                                                     {"hub": 2, "segment": 2}, {"hub": 3, "segment": 2}                          ],
+    #   [                           {"hub": 1, "segment": 1}, {"hub": 2, "segment": 1},                                                     {"hub": 3, "segment": 1}],
+    #   [ {"hub": 1, "segment": 0},                                                     {"hub": 2, "segment": 0}, {"hub": 3, "segment": 0}                          ],
+    #
+    #   [                           {"hub": 4, "segment": 2},                           {"hub": 5, "segment": 2},                           {"hub": 6, "segment": 2}],
+    #   [ {"hub": 4, "segment": 1},                           {"hub": 5, "segment": 1},                           {"hub": 6, "segment": 1},                         ],
+    #   [                           {"hub": 4, "segment": 0},                           {"hub": 5, "segment": 0},                           {"hub": 6, "segment": 0}]
+    #]
+
+    # Segment map for when 6x6 stars are wired but game is in 3x6 mode:
+    ledSegmentMap3 = [
+       [ {"hub": 1, "segment": 2},                                                     {"hub": 2, "segment": 3}, {"hub": 3, "segment": 2}                          ],
+       [                           {"hub": 1, "segment": 4}, {"hub": 2, "segment": 1},                                                     {"hub": 3, "segment": 4}],
+       [ {"hub": 1, "segment": 0},                                                     {"hub": 2, "segment": 5}, {"hub": 3, "segment": 0}                          ],
+
+       [                           {"hub": 4, "segment": 3},                           {"hub": 5, "segment": 3},                           {"hub": 6, "segment": 3}],
+       [ {"hub": 4, "segment": 1},                           {"hub": 5, "segment": 1},                           {"hub": 6, "segment": 1},                         ],
+       [                           {"hub": 4, "segment": 5},                           {"hub": 5, "segment": 5},                           {"hub": 6, "segment": 5}]
+    ]
+
+    ledSegmentMap6 = [
+       [ {"hub": 1, "segment": 2}, {"hub": 1, "segment": 3}, {"hub": 2, "segment": 2}, {"hub": 2, "segment": 3}, {"hub": 3, "segment": 2}, {"hub": 3, "segment": 3}],
+       [ {"hub": 1, "segment": 1}, {"hub": 1, "segment": 4}, {"hub": 2, "segment": 1}, {"hub": 2, "segment": 4}, {"hub": 3, "segment": 1}, {"hub": 3, "segment": 4}],
+       [ {"hub": 1, "segment": 0}, {"hub": 1, "segment": 5}, {"hub": 2, "segment": 0}, {"hub": 2, "segment": 5}, {"hub": 3, "segment": 0}, {"hub": 3, "segment": 5}],
+
+       [ {"hub": 4, "segment": 2}, {"hub": 4, "segment": 3}, {"hub": 5, "segment": 2}, {"hub": 5, "segment": 3}, {"hub": 6, "segment": 2}, {"hub": 6, "segment": 3}],
+       [ {"hub": 4, "segment": 1}, {"hub": 4, "segment": 4}, {"hub": 5, "segment": 1}, {"hub": 5, "segment": 4}, {"hub": 6, "segment": 1}, {"hub": 6, "segment": 4}],
+       [ {"hub": 4, "segment": 0}, {"hub": 4, "segment": 5}, {"hub": 5, "segment": 0}, {"hub": 5, "segment": 5}, {"hub": 6, "segment": 0}, {"hub": 6, "segment": 5}]
+    ]
+
+    ledSegmentMap = None # initialized in setup/reset
+
     hubs = {}
     stars = {}
     leds = {}
@@ -235,10 +245,10 @@ class LedHandler():
         if HUB_ADDR_STAR_6 != '':
             self.AddStarHub(6, HUB_ADDR_STAR_6)
 
-        for row in range(GAME_ROWS):
+        for row in range(GAME_CONFIG.GAME_ROWS):
             self.stars[row] = {}
             self.leds[row] = {}
-            for column in range(GAME_COLUMNS):
+            for column in range(GAME_CONFIG.GAME_COLUMNS):
                 self.stars[row][column] = {}
                 self.leds[row][column] = {}
 
@@ -249,9 +259,11 @@ class LedHandler():
 
 
     def GetStarHub(self, row, column):
-        segment = ledSegmentMap[row][column]
-        hub = segment["hub"]
-        return self.hubs.get(hub, None)
+        if self.ledSegmentMap:
+            segment = self.ledSegmentMap[row][column]
+            hub = segment["hub"]
+            return self.hubs.get(hub, None)
+        return ''
 
 
     def GetLedApiUrl(self, row, column, bright, color):
@@ -259,15 +271,15 @@ class LedHandler():
         if not hub:
             return None;
   
-        segment = ledSegmentMap[row][column];
+        segment = self.ledSegmentMap[row][column];
 
-        return f'http://{hub}{API_ADDR}{API_ARG_SEGMENT}{segment["segment"]}{API_ARG_BRIGHTNES}{bright}{API_ARG_COLOR}{color}'
+        return f'http://{hub}{self.API_ADDR}{self.API_ARG_SEGMENT}{segment["segment"]}{self.API_ARG_BRIGHTNES}{bright}{self.API_ARG_COLOR}{color}'
 
 
     def SetStarLed(self, row, column, bright, color=None):
         self.stars[row][column]['bright'] = bright
         if not 'color' in self.stars[row][column]:
-            self.stars[row][column]['color'] = STAR_COLOR
+            self.stars[row][column]['color'] = self.STAR_COLOR
         if color:
             self.stars[row][column]['color'] = color
 
@@ -297,7 +309,7 @@ class LedHandler():
                 starBrigth = star.get('bright', 0)
                 ledBrigth = led.get('bright', None)
 
-                starColor = star.get('color', STAR_COLOR)
+                starColor = star.get('color', self.STAR_COLOR)
                 ledColor = star.get('color', None)
 
                 if (starBrigth == ledBrigth) and (starColor == ledColor):
@@ -330,23 +342,21 @@ class LedHandler():
 
 
 def reset(newColumns, player, stars, screen, leds, clear_recording=True):
-    global GAME_COLUMNS, FRAME_COUNT, GAME_StarsMissed, RECORDING, vizRects, ledSegmentMap, REPLAY
-
     leds.SetAllLedsOff()
     leds.UpdateLeds()
 
-    GAME_COLUMNS = newColumns
+    GAME_CONFIG.GAME_COLUMNS = newColumns
 
-    if GAME_COLUMNS == 3:
-        vizRects = vizRects3
-        ledSegmentMap = ledSegmentMap3
+    if GAME_CONFIG.GAME_COLUMNS == 3:
+        GAME_VIZ_CONF.vizRects = GAME_VIZ_CONF.vizRects3
+        leds.ledSegmentMap = leds.ledSegmentMap3
     else:
-        vizRects = vizRects6
-        ledSegmentMap = ledSegmentMap6
+        GAME_VIZ_CONF.vizRects = GAME_VIZ_CONF.vizRects6
+        leds.ledSegmentMap = leds.ledSegmentMap6
 
     leds.reset()
     player.reset()
-    GAME_StarsMissed = 0
+    GAME_STATE.StarsMissed = 0
 
     for star in stars:
         star.kill()
@@ -355,19 +365,19 @@ def reset(newColumns, player, stars, screen, leds, clear_recording=True):
     pg.display.flip()
 
     if clear_recording:
-        RECORDING = {"seed": time.time(), "columns": GAME_COLUMNS, "movements": [], "gamever": CURRENT_GAME_VERSION}
+        RECORDING = {"seed": time.time(), "columns": GAME_CONFIG.GAME_COLUMNS, "movements": [], "gamever": CURRENT_GAME_VERSION}
         random.seed(RECORDING["seed"])
 
     REPLAY=False
-    FRAME_COUNT = 0
+    GAME_STATE.FRAME_COUNT = 0
 
 
 def replay(recording, player, stars, screen, leds):
-    global RECORDING, REPLAY
+    global RECORDING
     #print(f"Replaying {recording}")
     RECORDING = recording
     reset(recording["columns"], player, stars, screen, leds, False)
-    REPLAY = True
+    GAME_STATE.REPLAY = True
     random.seed(RECORDING["seed"])
 
 
@@ -383,45 +393,43 @@ class Star(pg.sprite.Sprite):
         self.image = self.images[0]
         self.gridPosX = column
         self.gridPosY = -1
-        self.rect = vizRects[self.gridPosY+1][self.gridPosX]
+        self.rect = GAME_VIZ_CONF.vizRects[self.gridPosY+1][self.gridPosX]
         self.facing = 0
         self.frame = 0
 
     @property
     def hangingLow(self):
-        return self.gridPosY>=(GAME_ROWS-1)
+        return self.gridPosY>=(GAME_CONFIG.GAME_ROWS-1)
 
     def fall(self):
         self.gridPosY += 1
-        if self.gridPosY < GAME_ROWS:
-            self.rect = vizRects[self.gridPosY][self.gridPosX]
+        if self.gridPosY < GAME_CONFIG.GAME_ROWS:
+            self.rect = GAME_VIZ_CONF.vizRects[self.gridPosY][self.gridPosX]
         else:
             self.land()
 
 
     def land(self, player=None):
-        global GAME_StarsMissed
-
-        if self.frame % STAR_MOVE_RATE != 0:
+        if self.frame % GAME_CONFIG.STAR_MOVE_RATE != 0:
             return
 
         catched = False
         if not player == None:
             catched = player.CatchStarPassive(self)
         if not catched:
-            GAME_StarsMissed += 1
+            GAME_STATE.StarsMissed += 1
         self.kill()
 
 
     def update(self, *args, **kwargs):
         #self.rect.move_ip(self.facing, 1)
-        if self.frame % STAR_MOVE_RATE == 0:
+        if self.frame % GAME_CONFIG.STAR_MOVE_RATE == 0:
             self.fall()
 
-        if not SCREENRECT.contains(self.rect):
+        if not GAME_STATE.SCREENRECT.contains(self.rect):
             self.facing = -self.facing
             self.rect.top = self.rect.bottom + 1
-            self.rect = self.rect.clamp(SCREENRECT)
+            self.rect = self.rect.clamp(GAME_STATE.SCREENRECT)
         self.frame = self.frame + 1
 
 
@@ -475,11 +483,11 @@ class Player(pg.sprite.Sprite):
                 self.image = self.images[1]
 
     def updateRect(self):
-        self.rect = vizGoatRects[int(self.gridPos*2)+max(self.facing,0)]
+        self.rect = GAME_VIZ_CONF.vizGoatRects[int(self.gridPos*2)+max(self.facing,0)]
 
     def moveInGrid(self):        
-        maxGoatPos = round(GAME_COLUMNS/2)-1
-        if GAME_COLUMNS == 3:
+        maxGoatPos = round(GAME_CONFIG.GAME_COLUMNS/2)-1
+        if GAME_CONFIG.GAME_COLUMNS == 3:
             maxGoatPos = 2
 
         if self.facing < 0:
@@ -501,7 +509,7 @@ class Player(pg.sprite.Sprite):
         turned = (self.facing != direction)
         self.facing = direction
 
-        if (not turned) or (GAME_COLUMNS == 3):
+        if (not turned) or (GAME_CONFIG.GAME_COLUMNS == 3):
             self.moveInGrid()        
 
         #print(f"gridPos: {self.gridPos}, facing: {self.facing}")
@@ -535,14 +543,14 @@ class Player(pg.sprite.Sprite):
 
     @property
     def HornColumn(self):
-        if GAME_COLUMNS == 3:
+        if GAME_CONFIG.GAME_COLUMNS == 3:
             return self.gridPos
         return self.gridPos * 2 + max(self.facing,0)
 
 
     @property
     def ButtColumn(self):
-        if GAME_COLUMNS == 3:
+        if GAME_CONFIG.GAME_COLUMNS == 3:
             return -1 # no butt column
         return self.gridPos*2 + (1-max(self.facing,0))
 
@@ -651,7 +659,7 @@ class MenuScreen():
 
         self.frame = -1
 
-        overlayBg = pg.Surface(SCREENRECT.size, pg.SRCALPHA,32)
+        overlayBg = pg.Surface(GAME_STATE.SCREENRECT.size, pg.SRCALPHA,32)
         overlayBg.fill((0,0,0, 150))
         self.background.blit(overlayBg, (0, 0))
 
@@ -660,8 +668,7 @@ class MenuScreen():
         self.frame += 1
         for event in pg.event.get():
             if event.type == pg.QUIT:
-                global GAME_QUIT
-                GAME_QUIT = True
+                GAME_STATE.GAME_QUIT = True
                 return
             if event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
                 CloseMenu(event.key)
@@ -692,21 +699,21 @@ class MenuScreen():
 
 
 def spawnNewStarRow(stars, stargroups):
-    if(FRAME_COUNT>STAR_STOP_SPAWN_FRAMECOUNT):
+    if(GAME_STATE.FRAME_COUNT>GAME_CONFIG.STAR_STOP_SPAWN_FRAMECOUNT):
         return
 
-    if FRAME_COUNT % STAR_MOVE_RATE != 0:
+    if GAME_STATE.FRAME_COUNT % GAME_CONFIG.STAR_MOVE_RATE != 0:
         return
 
     spawnStar = False
-    starLikelyhood = min(STAR_BASE_LIKELYHOOD + (FRAME_COUNT*STAR_TIMER_LIKELYHOOD), STAR_MAX_LIKELYHOOD);
+    starLikelyhood = min(GAME_CONFIG.STAR_BASE_LIKELYHOOD + (GAME_STATE.FRAME_COUNT*GAME_CONFIG.STAR_TIMER_LIKELYHOOD), GAME_CONFIG.STAR_MAX_LIKELYHOOD);
     starCount = len(stars.sprites())
 
-    for starNr in range(MAX_STARS):
+    for starNr in range(GAME_CONFIG.MAX_STARS):
         randomDraw = random.random()
         spawnStar = randomDraw < starLikelyhood
 
-        if starCount <= FORCE_STAR_SPAWN_MIN:
+        if starCount <= GAME_CONFIG.FORCE_STAR_SPAWN_MIN:
             #print("Force star spawn")
             spawnStar=True
             starCount += 1
@@ -714,21 +721,19 @@ def spawnNewStarRow(stars, stargroups):
         #print(f"FRAME: {FRAME_COUNT}: likelyHood: {starLikelyhood}, draw: {randomDraw}, spawn: {spawnStar}")
 
         if spawnStar:
-            spawnColumn = random.randint(0, GAME_COLUMNS-1);
+            spawnColumn = random.randint(0, GAME_CONFIG.GAME_COLUMNS-1);
             #print(f"Spawning at {spawnColumn}")
             Star(spawnColumn, stargroups)
 
 
 
 def CloseMenu(key):
-    global CURRENT_MENU, MENU_JUST_CLOSED
-    CURRENT_MENU = False
-    MENU_JUST_CLOSED = True
+    GAME_STATE.CURRENT_MENU = False
+    GAME_STATE.MENU_JUST_CLOSED = True
 
 
 def QuitGame(key):
-    global GAME_QUIT
-    GAME_QUIT = True
+    GAME_STATE.GAME_QUIT = True
 
 
 def main(winstyle=0):
@@ -743,8 +748,8 @@ def main(winstyle=0):
     fullscreen = False
     # Set the display mode
     winstyle = 0  # |FULLSCREEN
-    bestdepth = pg.display.mode_ok(SCREENRECT.size, winstyle, 32)
-    screen = pg.display.set_mode(SCREENRECT.size, winstyle, bestdepth)
+    bestdepth = pg.display.mode_ok(GAME_STATE.SCREENRECT.size, winstyle, 32)
+    screen = pg.display.set_mode(GAME_STATE.SCREENRECT.size, winstyle, bestdepth)
 
     # Load images, assign to sprite classes
     # (do this before the classes are used, after screen setup)
@@ -761,8 +766,8 @@ def main(winstyle=0):
 
     # create the background, tile the bgd image
     bgdtile = load_image("background.png")
-    background = pg.Surface(SCREENRECT.size)
-    for x in range(0, SCREENRECT.width, bgdtile.get_width()):
+    background = pg.Surface(GAME_STATE.SCREENRECT.size)
+    for x in range(0, GAME_STATE.SCREENRECT.width, bgdtile.get_width()):
         background.blit(bgdtile, (x, 0))
     screen.blit(background, (0, 0))
     pg.display.flip()
@@ -779,15 +784,6 @@ def main(winstyle=0):
     gameSprites = pg.sprite.RenderUpdates()
 
     # initialize our starting sprites
-    global CURRENT_MENU, vizRects, ledSegmentMap
-
-    if GAME_COLUMNS == 3:
-        vizRects = vizRects3
-        ledSegmentMap = ledSegmentMap3
-    else:
-        vizRects = vizRects6
-        ledSegmentMap = ledSegmentMap6
-
     player = Player(gameSprites)
 
     # right/left buttons
@@ -816,16 +812,15 @@ def main(winstyle=0):
     reset(6, player, stars, screen, leds)
 
     # Run our main loop whilst the player is alive.
-    while player.alive() and not GAME_QUIT:
-        if CURRENT_MENU:
-            CURRENT_MENU.Loop()
+    while player.alive() and not GAME_STATE.GAME_QUIT:
+        if GAME_STATE.CURRENT_MENU:
+            GAME_STATE.CURRENT_MENU.Loop()
         else:
             PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButtons, endButtons, gameSprites, screen, background)
-            global MENU_JUST_CLOSED
-            MENU_JUST_CLOSED = False
+            GAME_STATE.MENU_JUST_CLOSED = False
 
         # cap the framerate at 10fps. Also called 10HZ or 10 times per second.
-        clock.tick(FRAME_RATE)
+        clock.tick(GAME_CONFIG.FRAME_RATE)
 
     leds.SetAllLedsOff()
     leds.UpdateLeds()
@@ -835,20 +830,19 @@ def main(winstyle=0):
     pg.time.wait(1000)
 
 def ReRenderBackground(screen):
-    if GAME_COLUMNS == 3:
+    if GAME_CONFIG.GAME_COLUMNS == 3:
         bgdtile = load_image("backgroundB.png")
     else:
         bgdtile = load_image("background.png")
 
-    background = pg.Surface(SCREENRECT.size)
-    for x in range(0, SCREENRECT.width, bgdtile.get_width()):
+    background = pg.Surface(GAME_STATE.SCREENRECT.size)
+    for x in range(0, GAME_STATE.SCREENRECT.width, bgdtile.get_width()):
         background.blit(bgdtile, (x, 0))
     screen.blit(background, (0, 0))
 
 
 def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButtons, endButtons, gameSprites, screen, background):
-    global FRAME_COUNT
-    FRAME_COUNT += 1
+    GAME_STATE.FRAME_COUNT += 1
 
     def Reset6(key):
         CloseMenu(key)
@@ -873,26 +867,25 @@ def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButto
             leds.active = 1
 
     def LedBrightText():
-        if (BRIGHTNESS_MOD != 0) or (STAR_BRIGHTNESS_A != STAR_BRIGHTNESS_B) or (STAR_BRIGHTNESS_A != GOAT_BRIGHTNESS) or (STAR_BRIGHTNESS_B != GOAT_BRIGHTNESS):
-            if BRIGHTNESS_MOD == 0:
-                return f"LED Helligkeit: [{STAR_BRIGHTNESS_A}|{STAR_BRIGHTNESS_B}|{GOAT_BRIGHTNESS}]"
-            elif BRIGHTNESS_MOD == 1:
-                return f"LED Helligkeit: [{STAR_BRIGHTNESS_A}]|{STAR_BRIGHTNESS_B}|{GOAT_BRIGHTNESS}"
-            elif BRIGHTNESS_MOD == 2:
-                return f"LED Helligkeit: {STAR_BRIGHTNESS_A}|[{STAR_BRIGHTNESS_B}]|{GOAT_BRIGHTNESS}"
-            elif BRIGHTNESS_MOD == 3:
-                return f"LED Helligkeit: {STAR_BRIGHTNESS_A}|{STAR_BRIGHTNESS_B}|[{GOAT_BRIGHTNESS}]"
+        if (leds.BRIGHTNESS_MOD != 0) or (leds.STAR_BRIGHTNESS_A != leds.STAR_BRIGHTNESS_B) or (leds.STAR_BRIGHTNESS_A != leds.GOAT_BRIGHTNESS) or (leds.STAR_BRIGHTNESS_B != leds.GOAT_BRIGHTNESS):
+            if leds.BRIGHTNESS_MOD == 0:
+                return f"LED Helligkeit: [{leds.STAR_BRIGHTNESS_A}|{leds.STAR_BRIGHTNESS_B}|{leds.GOAT_BRIGHTNESS}]"
+            elif leds.BRIGHTNESS_MOD == 1:
+                return f"LED Helligkeit: [{leds.STAR_BRIGHTNESS_A}]|{leds.STAR_BRIGHTNESS_B}|{leds.GOAT_BRIGHTNESS}"
+            elif leds.BRIGHTNESS_MOD == 2:
+                return f"LED Helligkeit: {leds.STAR_BRIGHTNESS_A}|[{leds.STAR_BRIGHTNESS_B}]|{leds.GOAT_BRIGHTNESS}"
+            elif leds.BRIGHTNESS_MOD == 3:
+                return f"LED Helligkeit: {leds.STAR_BRIGHTNESS_A}|{leds.STAR_BRIGHTNESS_B}|[{leds.GOAT_BRIGHTNESS}]"
         else:
-            return f"LED Helligkeit: {STAR_BRIGHTNESS_A}"
+            return f"LED Helligkeit: {leds.STAR_BRIGHTNESS_A}"
 
     def LedBright(key):
-        global BRIGHTNESS_MOD, STAR_BRIGHTNESS_A, STAR_BRIGHTNESS_B, GOAT_BRIGHTNESS
         modifiers = pg.key.get_mods()
 
         if (key == pg.K_RETURN) and (modifiers & pg.KMOD_LSHIFT):
-            BRIGHTNESS_MOD += 1
-            if BRIGHTNESS_MOD>3:
-                BRIGHTNESS_MOD = 0
+            leds.BRIGHTNESS_MOD += 1
+            if leds.BRIGHTNESS_MOD>3:
+                leds.BRIGHTNESS_MOD = 0
             return
 
         modVal = 10
@@ -902,43 +895,43 @@ def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButto
             modVal = 50
 
         if key == pg.K_LEFT:
-            if BRIGHTNESS_MOD == 0 or BRIGHTNESS_MOD == 1:
-                STAR_BRIGHTNESS_A = max(STAR_BRIGHTNESS_A-modVal, 1)
-            if BRIGHTNESS_MOD == 0 or BRIGHTNESS_MOD == 2:
-                STAR_BRIGHTNESS_B = max(STAR_BRIGHTNESS_B-modVal, 1)
-            if BRIGHTNESS_MOD == 0 or BRIGHTNESS_MOD == 3:
-                GOAT_BRIGHTNESS = max(GOAT_BRIGHTNESS-modVal, 1)
+            if leds.BRIGHTNESS_MOD == 0 or leds.BRIGHTNESS_MOD == 1:
+                leds.STAR_BRIGHTNESS_A = max(leds.STAR_BRIGHTNESS_A-modVal, 1)
+            if leds.BRIGHTNESS_MOD == 0 or leds.BRIGHTNESS_MOD == 2:
+                leds.STAR_BRIGHTNESS_B = max(leds.STAR_BRIGHTNESS_B-modVal, 1)
+            if leds.BRIGHTNESS_MOD == 0 or leds.BRIGHTNESS_MOD == 3:
+                leds.GOAT_BRIGHTNESS = max(leds.GOAT_BRIGHTNESS-modVal, 1)
         if key == pg.K_RIGHT:
-            if BRIGHTNESS_MOD == 0 or BRIGHTNESS_MOD == 1:
-                STAR_BRIGHTNESS_A = min(STAR_BRIGHTNESS_A+modVal, 255)
-            if BRIGHTNESS_MOD == 0 or BRIGHTNESS_MOD == 2:
-                STAR_BRIGHTNESS_B = min(STAR_BRIGHTNESS_B+modVal, 255)
-            if BRIGHTNESS_MOD == 0 or BRIGHTNESS_MOD == 3:
-                GOAT_BRIGHTNESS = min(GOAT_BRIGHTNESS+modVal, 255)
+            if leds.BRIGHTNESS_MOD == 0 or leds.BRIGHTNESS_MOD == 1:
+                leds.STAR_BRIGHTNESS_A = min(leds.STAR_BRIGHTNESS_A+modVal, 255)
+            if leds.BRIGHTNESS_MOD == 0 or leds.BRIGHTNESS_MOD == 2:
+                leds.STAR_BRIGHTNESS_B = min(leds.STAR_BRIGHTNESS_B+modVal, 255)
+            if leds.BRIGHTNESS_MOD == 0 or leds.BRIGHTNESS_MOD == 3:
+                leds.GOAT_BRIGHTNESS = min(leds.GOAT_BRIGHTNESS+modVal, 255)
         if key == pg.K_RETURN:
-            if BRIGHTNESS_MOD == 0 or BRIGHTNESS_MOD == 1:
-                if STAR_BRIGHTNESS_A > 255/2:
+            if leds.BRIGHTNESS_MOD == 0 or leds.BRIGHTNESS_MOD == 1:
+                if leds.STAR_BRIGHTNESS_A > 255/2:
                     newBright = 10
                 else:
                     newBright = 255
-            if BRIGHTNESS_MOD == 2:
-                if STAR_BRIGHTNESS_B > 255/2:
+            if leds.BRIGHTNESS_MOD == 2:
+                if leds.STAR_BRIGHTNESS_B > 255/2:
                     newBright = 10
                 else:
                     newBright = 255
-            if BRIGHTNESS_MOD == 3:                
-                if GOAT_BRIGHTNESS > 255/2:
+            if leds.BRIGHTNESS_MOD == 3:                
+                if leds.GOAT_BRIGHTNESS > 255/2:
                     newBright = 10
                 else:
                     newBright = 255            
 
-            if BRIGHTNESS_MOD == 0 or BRIGHTNESS_MOD == 1:
-                STAR_BRIGHTNESS_A = newBright
-            if BRIGHTNESS_MOD == 0 or BRIGHTNESS_MOD == 2:
-                STAR_BRIGHTNESS_B = newBright
-            if BRIGHTNESS_MOD == 0 or BRIGHTNESS_MOD == 3:
-                GOAT_BRIGHTNESS = newBright            
-        leds.UpdateBrightness(STAR_BRIGHTNESS_A, STAR_BRIGHTNESS_B, GOAT_BRIGHTNESS)
+            if leds.BRIGHTNESS_MOD == 0 or leds.BRIGHTNESS_MOD == 1:
+                leds.STAR_BRIGHTNESS_A = newBright
+            if leds.BRIGHTNESS_MOD == 0 or leds.BRIGHTNESS_MOD == 2:
+                leds.STAR_BRIGHTNESS_B = newBright
+            if leds.BRIGHTNESS_MOD == 0 or leds.BRIGHTNESS_MOD == 3:
+                leds.GOAT_BRIGHTNESS = newBright            
+        leds.UpdateBrightness(leds.STAR_BRIGHTNESS_A, leds.STAR_BRIGHTNESS_B, leds.GOAT_BRIGHTNESS)
         leds.UpdateLeds()
 
 
@@ -949,8 +942,7 @@ def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButto
             player.kill()
             return
         if event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
-            global CURRENT_MENU
-            CURRENT_MENU = MenuScreen(screen, {"Zurück zum Spiel": CloseMenu, LedText: ToggleLedActive, LedBrightText: LedBright, "Neues Spiel (Normal)": Reset6, "Neues Spiel (Einfach)": Reset3, "Spiel Beenden": QuitGame})
+            GAME_STATE.CURRENT_MENU = MenuScreen(screen, {"Zurück zum Spiel": CloseMenu, LedText: ToggleLedActive, LedBrightText: LedBright, "Neues Spiel (Normal)": Reset6, "Neues Spiel (Einfach)": Reset3, "Spiel Beenden": QuitGame})
             return
         if event.type == pg.KEYDOWN and event.key == pg.K_PAGEUP:
             Reset6(event.key)
@@ -959,16 +951,16 @@ def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButto
             Reset3(event.key)
             return
         if event.type == pg.KEYDOWN and event.key == pg.K_RIGHT:
-            if not REPLAY:
-                RECORDING["movements"].append({"frame": FRAME_COUNT, "key": event.key});
+            if not GAME_STATE.REPLAY:
+                RECORDING["movements"].append({"frame": GAME_STATE.FRAME_COUNT, "key": event.key});
                 player.move(1)
         if event.type == pg.KEYDOWN and event.key == pg.K_LEFT:
-            if not REPLAY:
-                RECORDING["movements"].append({"frame": FRAME_COUNT, "key": event.key});
+            if not GAME_STATE.REPLAY:
+                RECORDING["movements"].append({"frame": GAME_STATE.FRAME_COUNT, "key": event.key});
                 player.move(-1)
         if event.type == pg.KEYDOWN and event.key == pg.K_UP:
-            if not REPLAY:
-                RECORDING["movements"].append({"frame": FRAME_COUNT, "key": event.key});
+            if not GAME_STATE.REPLAY:
+                RECORDING["movements"].append({"frame": GAME_STATE.FRAME_COUNT, "key": event.key});
                 player.jump([star for star in stars if star.hangingLow])
         if event.type == pg.KEYDOWN and ((event.key == pg.K_F7) or (event.key == pg.K_F10)):
             load_last_recording()
@@ -978,11 +970,11 @@ def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButto
             replay(RECORDING, player, stars, screen, leds)
             return
 
-    if REPLAY:
+    if GAME_STATE.REPLAY:
         for movement in RECORDING["movements"]:
-            if movement["frame"] > FRAME_COUNT:
+            if movement["frame"] > GAME_STATE.FRAME_COUNT:
                 break
-            if movement["frame"] == FRAME_COUNT:
+            if movement["frame"] == GAME_STATE.FRAME_COUNT:
                 if movement["key"] == pg.K_RIGHT:
                     player.move(1)
                 if movement["key"] == pg.K_LEFT:
@@ -993,28 +985,28 @@ def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButto
     keystate = pg.key.get_pressed()
 
     # update score text:
-    punkte = max(((player.starsCatchedHorn*10)+player.starsCatchedButt-GAME_StarsMissed),0)
+    punkte = max(((player.starsCatchedHorn*10)+player.starsCatchedButt-GAME_STATE.StarsMissed),0)
     scoreText.text = f"{punkte}"
 
-    if GAME_COLUMNS == 3:
+    if GAME_CONFIG.GAME_COLUMNS == 3:
         statText.text = f"Gefangen: {player.starsCatchedHorn}"
     else:
         statText.text = f"Gefangen: (Horn/Total): {player.starsCatchedHorn}/{player.starsCatchedHorn+player.starsCatchedButt}"
 
-    statMissedText.text = f"Verpasst: {GAME_StarsMissed}"
+    statMissedText.text = f"Verpasst: {GAME_STATE.StarsMissed}"
 
 
-    if (FRAME_COUNT == 1) or (FRAME_COUNT == GAME_END_FRAMECOUNT):
+    if (GAME_STATE.FRAME_COUNT == 1) or (GAME_STATE.FRAME_COUNT == GAME_CONFIG.GAME_END_FRAMECOUNT):
         for button in gameButtons:
-            button.paused = FRAME_COUNT != 1
+            button.paused = GAME_STATE.FRAME_COUNT != 1
         for button in endButtons:
-            button.paused = FRAME_COUNT != GAME_END_FRAMECOUNT
+            button.paused = GAME_STATE.FRAME_COUNT != GAME_CONFIG.GAME_END_FRAMECOUNT
 
-    if (FRAME_COUNT == GAME_END_FRAMECOUNT) and (not REPLAY):
+    if (GAME_STATE.FRAME_COUNT == GAME_CONFIG.GAME_END_FRAMECOUNT) and (not GAME_STATE.REPLAY):
         save_recording(punkte)
 
     # re-draw whole background
-    if MENU_JUST_CLOSED:
+    if GAME_STATE.MENU_JUST_CLOSED:
         ReRenderBackground(screen)
        
     # clear/erase the last drawn sprites
@@ -1031,9 +1023,9 @@ def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButto
     gameSprites.update()
 
     for star in stars:
-        bright = STAR_BRIGHTNESS_A
+        bright = leds.STAR_BRIGHTNESS_A
         if star.gridPosY > 2:
-            bright = STAR_BRIGHTNESS_B
+            bright = leds.STAR_BRIGHTNESS_B
         leds.SetStarLed(star.gridPosY, star.gridPosX, bright)
 
     # handle player input
@@ -1043,7 +1035,7 @@ def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButto
     #player.jumping = jumping
     
     # draw the scene
-    if MENU_JUST_CLOSED:
+    if GAME_STATE.MENU_JUST_CLOSED:
         pg.display.flip()
     
     dirty = gameSprites.draw(screen)
@@ -1053,7 +1045,7 @@ def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButto
 
     leds.UpdateLeds()
 
-    #print(f"starsCatchedHorn: {player.starsCatchedHorn}, starsCatchedButt:  {player.starsCatchedButt}, starsMissed: {GAME_StarsMissed}");
+    #print(f"starsCatchedHorn: {player.starsCatchedHorn}, starsCatchedButt:  {player.starsCatchedButt}, starsMissed: {GAME_STATE.StarsMissed}");
 
 
 
