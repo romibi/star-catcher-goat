@@ -39,24 +39,30 @@ HUB_ADDR_STAR_6 = ''
 main_dir = os.path.split(os.path.abspath(__file__))[0]
 
 class GameConfig():
-    # difficulty settings
-    STAR_BASE_LIKELYHOOD = 0.3 # at start 30% chance of 1 star. (15% for 2nd star)
-    STAR_MAX_LIKELYHOOD = 0.95 # max chance of 95% for 1 star (47.5% for 2nd star)
-    STAR_TIMER_LIKELYHOOD = 0.0005 # star spawn likely hood increase over time
-    FORCE_STAR_SPAWN_MIN = 2 # if 2 or less stars 1 star spawns 100%
-    MAX_STARS = 2 # max stars per row
 
-    # speed
-    FRAME_RATE = 10; # fps
-    STAR_MOVE_RATE = 10; # stars move every x frames
+    def __init__(self):
+        self.reset()
 
-    # game end
-    STAR_STOP_SPAWN_FRAMECOUNT = 1120; # no more stars after 112 seconds
-    GAME_END_FRAMECOUNT = 1200; # stop game loop after 120 seconds
+    def reset(self):
+        # difficulty settings
+        self.STAR_BASE_LIKELYHOOD = 0.3 # at start 30% chance of 1 star. (15% for 2nd star)
+        self.STAR_MAX_LIKELYHOOD = 0.95 # max chance of 95% for 1 star (47.5% for 2nd star)
+        self.STAR_TIMER_LIKELYHOOD = 0.0005 # star spawn likely hood increase over time
+        self.FORCE_STAR_SPAWN_MIN = 2 # if 2 or less stars 1 star spawns 100%
+        self.MAX_STARS = 2 # max stars per row
 
-    # how many stars? 3x6 or 6x6
-    GAME_ROWS = 6;
-    GAME_COLUMNS = 6; # code works with 3 or 6 columns
+        # speed
+        self.FRAME_RATE = 10; # fps
+        self.STAR_MOVE_RATE = 10; # stars move every x frames
+
+        # game end
+        self.STAR_STOP_SPAWN_FRAMECOUNT = 1120; # no more stars after 112 seconds
+        self.GAME_END_FRAMECOUNT = 1200; # stop game loop after 120 seconds
+
+        # how many stars? 3x6 or 6x6
+        self.GAME_ROWS = 6;
+        self.GAME_COLUMNS = 6; # code works with 3 or 6 columns
+
 
 class GameVisualizationConfig():
     # vizPos für 3 columns
@@ -102,13 +108,61 @@ class GameState():
 GAME_CONFIG = GameConfig()
 GAME_STATE = GameState()
 GAME_VIZ_CONF = GameVisualizationConfig()
-RECORDING = {"seed": None, "columns": GAME_CONFIG.GAME_COLUMNS, "movements": [], "gamever": CURRENT_GAME_VERSION}
+
+RECORDING = None
+
+def InitRecording():
+    global RECORDING
+    RECORDING = {
+                    "seed": None,
+                    "movements": [],
+                    "gamever": CURRENT_GAME_VERSION
+                }
+    RECORDING["difficulty"] =   {
+                                    "STAR_BASE_LIKELYHOOD": GAME_CONFIG.STAR_BASE_LIKELYHOOD,
+                                    "STAR_MAX_LIKELYHOOD": GAME_CONFIG.STAR_MAX_LIKELYHOOD,
+                                    "STAR_TIMER_LIKELYHOOD": GAME_CONFIG.STAR_TIMER_LIKELYHOOD,
+                                    "FORCE_STAR_SPAWN_MIN": GAME_CONFIG.FORCE_STAR_SPAWN_MIN,
+                                    "MAX_STARS": GAME_CONFIG.MAX_STARS
+                                }
+    RECORDING["settings"] = {
+                                "FRAME_RATE": GAME_CONFIG.FRAME_RATE,
+                                "STAR_MOVE_RATE": GAME_CONFIG.STAR_MOVE_RATE,
+                                "STAR_STOP_SPAWN_FRAMECOUNT": GAME_CONFIG.STAR_STOP_SPAWN_FRAMECOUNT,
+                                "GAME_END_FRAMECOUNT": GAME_CONFIG.GAME_END_FRAMECOUNT,
+                                "columns": GAME_CONFIG.GAME_COLUMNS,
+                                "rows": GAME_CONFIG.GAME_ROWS
+                            }
+    RECORDING["seed"] = time.time()
+
+InitRecording()
+
+def ApplyRecordingSettings():
+    if "difficulty" in RECORDING:
+        difficulty = RECORDING["difficulty"]
+        if "STAR_BASE_LIKELYHOOD" in difficulty: GAME_CONFIG.STAR_BASE_LIKELYHOOD = difficulty["STAR_BASE_LIKELYHOOD"]
+        if "STAR_MAX_LIKELYHOOD" in difficulty: GAME_CONFIG.STAR_MAX_LIKELYHOOD = difficulty["STAR_MAX_LIKELYHOOD"]
+        if "STAR_TIMER_LIKELYHOOD" in difficulty: GAME_CONFIG.STAR_TIMER_LIKELYHOOD = difficulty["STAR_TIMER_LIKELYHOOD"]
+        if "FORCE_STAR_SPAWN_MIN" in difficulty: GAME_CONFIG.FORCE_STAR_SPAWN_MIN = difficulty["FORCE_STAR_SPAWN_MIN"]
+        if "MAX_STARS" in difficulty: GAME_CONFIG.MAX_STARS = difficulty["MAX_STARS"]
+    if "settings" in RECORDING:
+        settings = RECORDING["settings"]
+        if "FRAME_RATE" in settings: GAME_CONFIG.FRAME_RATE = settings["FRAME_RATE"]
+        if "STAR_MOVE_RATE" in settings: GAME_CONFIG.STAR_MOVE_RATE = settings["STAR_MOVE_RATE"]
+        if "STAR_STOP_SPAWN_FRAMECOUNT" in settings: GAME_CONFIG.STAR_STOP_SPAWN_FRAMECOUNT = settings["STAR_STOP_SPAWN_FRAMECOUNT"]
+        if "GAME_END_FRAMECOUNT" in settings: GAME_CONFIG.GAME_END_FRAMECOUNT = settings["GAME_END_FRAMECOUNT"]
+        if "rows" in settings: GAME_CONFIG.GAME_ROWS = settings["rows"]
+        if "columns" in settings:
+            GAME_CONFIG.GAME_COLUMNS = settings["columns"]
+        elif "columns" in RECORDING:
+            GAME_CONFIG.GAME_COLUMNS = RECORDING["columns"] # very first few recordings had columns directly in main dict
+
 
 def save_recording(points=None):
     try:
         filedate = time.strftime("%Y%m%d-%H%M%S")
         gameMode = ""
-        if RECORDING["columns"] == 3:
+        if RECORDING["settings"]["columns"] == 3:
             gameMode = "_easy"
         filename = os.path.join(main_dir, "recordings", f"recording_{filedate}{gameMode}.pickle")
         if points:
@@ -341,10 +395,12 @@ class LedHandler():
             threading.Thread(target=call_map, args=(rs,None)).start()
 
 
-def reset(newColumns, player, stars, screen, leds, clear_recording=True):
+def ResetGame(newColumns, player, stars, screen, leds, clear_recording=True):
+    # Shutdown LEDS
     leds.SetAllLedsOff()
     leds.UpdateLeds()
 
+    GAME_CONFIG.reset() # restore default values (in case recording replay manipulated them)
     GAME_CONFIG.GAME_COLUMNS = newColumns
 
     if GAME_CONFIG.GAME_COLUMNS == 3:
@@ -365,10 +421,10 @@ def reset(newColumns, player, stars, screen, leds, clear_recording=True):
     pg.display.flip()
 
     if clear_recording:
-        RECORDING = {"seed": time.time(), "columns": GAME_CONFIG.GAME_COLUMNS, "movements": [], "gamever": CURRENT_GAME_VERSION}
+        InitRecording()
         random.seed(RECORDING["seed"])
 
-    REPLAY=False
+    GAME_STATE.REPLAY = False
     GAME_STATE.FRAME_COUNT = 0
 
 
@@ -376,7 +432,9 @@ def replay(recording, player, stars, screen, leds):
     global RECORDING
     #print(f"Replaying {recording}")
     RECORDING = recording
-    reset(recording["columns"], player, stars, screen, leds, False)
+    ApplyRecordingSettings()
+
+    ResetGame(GAME_CONFIG.GAME_COLUMNS, player, stars, screen, leds, False)
     GAME_STATE.REPLAY = True
     random.seed(RECORDING["seed"])
 
@@ -808,8 +866,8 @@ def main(winstyle=0):
         statMissedText.targetRect = Rect(739,550, 510, 50)
         statMissedText.color = "grey"
 
-    # reset before first loop to have same random staring condition as in replay
-    reset(6, player, stars, screen, leds)
+    # reset before first loop to have same random starting condition as in replay
+    ResetGame(6, player, stars, screen, leds)
 
     # Run our main loop whilst the player is alive.
     while player.alive() and not GAME_STATE.GAME_QUIT:
@@ -844,13 +902,14 @@ def ReRenderBackground(screen):
 def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButtons, endButtons, gameSprites, screen, background):
     GAME_STATE.FRAME_COUNT += 1
 
+    # todo: move menu definition outside play loop
     def Reset6(key):
         CloseMenu(key)
-        reset(6, player, stars, screen, leds)
+        ResetGame(6, player, stars, screen, leds)
 
     def Reset3(key):
         CloseMenu(key)
-        reset(3, player, stars, screen, leds)
+        ResetGame(3, player, stars, screen, leds)
 
     def LedText():
         if leds.active == 1:
