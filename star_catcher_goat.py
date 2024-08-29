@@ -772,7 +772,7 @@ class MenuScreen():
     def Loop(self, serial_keys):
         def handleKey(key):
             if key in BUTTONS_MENU_CLOSE:
-                CloseMenu(event.key)
+                CloseMenu(key)
                 return True
             if key in BUTTONS_MENU_DOWN:
                 self.cursorIndex = min(self.cursorIndex+1, len(self.menuOptionMap.keys())-1)
@@ -1194,10 +1194,10 @@ def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButto
             GAME_STATE.CURRENT_MENU = MenuScreen(screen, {"Zurück zum Spiel": CloseMenu, LedText: ToggleLedActive, LedBrightText: LedBright, ControllerText: ControllerAction, ControllerSoundText: ToggleControllerSound, "Neues Spiel (Normal)": Reset6, "Neues Spiel (Einfach)": Reset3, "Spiel Beenden": QuitGame})
             return True
         if key == pg.K_PAGEUP:
-            Reset6(event.key)
+            Reset6(key)
             return True
         if key == pg.K_PAGEDOWN:
-            Reset3(event.key)
+            Reset3(key)
             return True
         if key in BUTTONS_MOVE_RIGHT:
             if not GAME_STATE.REPLAY:
