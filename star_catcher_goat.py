@@ -11,6 +11,8 @@ import threading
 import time
 import subprocess
 import pickle
+import serial
+import serial.tools.list_ports
 
 # see if we can load more than standard BMP
 if not pg.image.get_extended():
@@ -119,6 +121,9 @@ class GameState():
 
     FRAME_COUNT = 0
     StarsMissed = 0
+
+    CONTROLLER_COM_ADDR = ''
+    CONTROLLER_COM = None
 
 
 GAME_CONFIG = GameConfig()
@@ -641,6 +646,7 @@ class Player(pg.sprite.Sprite):
             if star.gridPosX == self.HornColumn:
                 self.starsCatchedHorn += 1
                 self.HornGlow()
+                # triggerControllerSound("twinkle"); # note: blocks receiving controller data
                 #print(f"Catching Star: x:{star.gridPosX} y:{star.gridPosX}")
                 star.kill()
         return
@@ -649,10 +655,12 @@ class Player(pg.sprite.Sprite):
         if star.gridPosX == self.HornColumn:
             self.starsCatchedHorn += 1
             self.HornGlow()
+            # triggerControllerSound("point") # note: blocks receiving controller data
             return True
         elif star.gridPosX == self.ButtColumn:
             self.starsCatchedButt += 1
             self.BodyGlow()
+            # triggerControllerSound("point") # note: blocks recevingin controller data
             return True
         return False
 
@@ -807,6 +815,11 @@ def spawnNewStarRow(stars, stargroups):
             Star(spawnColumn, stargroups)
 
 
+def triggerControllerSound(name):
+    if GAME_STATE.CONTROLLER_COM:
+        GAME_STATE.CONTROLLER_COM.write(bytes(f"play {name}", 'utf-8'))
+        GAME_STATE.CONTROLLER_COM.flush()
+
 
 def CloseMenu(key):
     GAME_STATE.CURRENT_MENU = False
@@ -888,6 +901,13 @@ def main(winstyle=0):
         statMissedText = UiText(gameSprites)
         statMissedText.targetRect = Rect(739,550, 510, 50)
         statMissedText.color = "grey"
+
+    #try find controller com port
+    ports = serial.tools.list_ports.comports()
+    for port in ports:
+      if port.description == 'Feather 32u4':
+        GAME_STATE.CONTROLLER_COM_ADDR = port.device
+        GAME_STATE.CONTROLLER_COM = serial.Serial(port=port.device, baudrate=9600, timeout=.1)
 
     # reset before first loop to have same random starting condition as in replay
     ResetGame(6, player, stars, screen, leds)
@@ -1019,6 +1039,42 @@ def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButto
         leds.UpdateBrightness(leds.STAR_BRIGHTNESS_A, leds.STAR_BRIGHTNESS_B, leds.GOAT_BRIGHTNESS)
         leds.UpdateLeds()
 
+    def ControllerText():
+      ports = serial.tools.list_ports.comports()
+      for port in ports:
+        if GAME_STATE.CONTROLLER_COM_ADDR == port.device:
+          return f"Controller Commands Device: {port.description}"
+      return f"Controller Commands Device: <none>"
+
+    def ControllerAction(key):
+      ports = serial.tools.list_ports.comports()
+      current_index = -1
+      i = 0
+      for port in ports:
+        print(f"Port {i}: {port.device}: {port.description}")
+        if GAME_STATE.CONTROLLER_COM_ADDR == port.device:
+          current_index = i
+        i += 1
+      
+      new_index = current_index
+      print(f"current index: {current_index}")
+      
+      if key in BUTTONS_MENU_LEFT:
+        new_index -= 1
+      if key in BUTTONS_MENU_RIGHT:
+        new_index += 1
+      
+      if (new_index < -1) or (new_index >= len(ports)):
+        new_index = -1
+      
+      print(f"new index: {new_index}")
+      
+      if new_index >= 0:
+        GAME_STATE.CONTROLLER_COM_ADDR = ports[new_index].device
+        GAME_STATE.CONTROLLER_COM = serial.Serial(port=ports[new_index].device, baudrate=9600, timeout=.1)
+      else:
+        GAME_STATE.CONTROLLER_COM_ADDR = ''
+        GAME_STATE.CONTROLLER_COM = None
 
     # get input
     for event in pg.event.get():
@@ -1027,7 +1083,7 @@ def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButto
             player.kill()
             return
         if event.type == pg.KEYDOWN and event.key in BUTTONS_MENU_OPEN:
-            GAME_STATE.CURRENT_MENU = MenuScreen(screen, {"Zurück zum Spiel": CloseMenu, LedText: ToggleLedActive, LedBrightText: LedBright, "Neues Spiel (Normal)": Reset6, "Neues Spiel (Einfach)": Reset3, "Spiel Beenden": QuitGame})
+            GAME_STATE.CURRENT_MENU = MenuScreen(screen, {"Zurück zum Spiel": CloseMenu, LedText: ToggleLedActive, LedBrightText: LedBright, ControllerText: ControllerAction, "Neues Spiel (Normal)": Reset6, "Neues Spiel (Einfach)": Reset3, "Spiel Beenden": QuitGame})
             return
         if event.type == pg.KEYDOWN and event.key == pg.K_PAGEUP:
             Reset6(event.key)
@@ -1090,6 +1146,10 @@ def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButto
     if (GAME_STATE.FRAME_COUNT == GAME_CONFIG.END_FRAMECOUNT) and (not GAME_STATE.REPLAY):
         # todo: Add Hi-Score Name enter screen and Hi-Score list
         save_recording(punkte)
+        if random.randint(0,10) > 7:
+          triggerControllerSound("chest")
+        else:
+          triggerControllerSound("fanfare")
 
     # re-draw whole background
     if GAME_STATE.MENU_JUST_CLOSED:
