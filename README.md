@@ -16,9 +16,7 @@ I'm using an old Raspberry PI 2 (unless it shows that it is not powerful enough)
 - `sudo apt install libegl-dev python3-pip`
 - `python3 -m venv scg-venv`
 - `source scg-venv/bin/activate`
-- `pip install pygame grequests rpi-rf`
-- `pip uninstall rpi-gpio` (buggy on bookworm)
-- `pip install rpi-lgpio` (works instead on bookworm)
+- `pip install pygame grequests pyserial`
 - Enable autologin using raspi-config
 - Add the following lines to .bashrc or .zshenv    
 ```
@@ -36,3 +34,10 @@ fi
 
 ## Materials:
 - TODO list materials
+
+## Notes:
+At some point i also did these stepps:
+- `pip install rpi-rf`
+- `pip uninstall rpi-gpio` (buggy on bookworm)
+- `pip install rpi-lgpio` (works instead on bookworm)
+But as i switched to a different RF module (the ones included in the feather modules) this should not be needed anymore
