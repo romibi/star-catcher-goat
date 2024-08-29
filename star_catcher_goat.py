@@ -36,6 +36,22 @@ HUB_ADDR_STAR_4 = ''
 HUB_ADDR_STAR_5 = ''
 HUB_ADDR_STAR_6 = ''
 
+BUTTONS_MENU_CLOSE = [pg.K_ESCAPE]
+BUTTONS_MENU_OPEN = [pg.K_ESCAPE]
+
+BUTTONS_MENU_UP = [pg.K_UP]
+BUTTONS_MENU_DOWN = [pg.K_DOWN]
+BUTTONS_MENU_LEFT = [pg.K_LEFT]
+BUTTONS_MENU_RIGHT = [pg.K_RIGHT]
+
+BUTTONS_MENU_CONFIRM = [pg.K_RETURN]
+BUTTONS_MENU_DENY = [pg.K_SPACE]
+
+BUTTONS_MOVE_LEFT = [pg.K_LEFT]
+BUTTONS_MOVE_RIGHT = [pg.K_RIGHT, pg.K_RETURN]
+BUTTONS_JUMP = [pg.K_UP, pg.K_SPACE]
+
+
 main_dir = os.path.split(os.path.abspath(__file__))[0]
 
 class GameConfig():
@@ -735,16 +751,16 @@ class MenuScreen():
             if event.type == pg.QUIT:
                 GAME_STATE.GAME_QUIT = True
                 return
-            if event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
+            if event.type == pg.KEYDOWN and event.key in BUTTONS_MENU_CLOSE:
                 CloseMenu(event.key)
                 return
-            if event.type == pg.KEYDOWN and event.key == pg.K_DOWN:
+            if event.type == pg.KEYDOWN and event.key in BUTTONS_MENU_DOWN:
                 self.cursorIndex = min(self.cursorIndex+1, len(self.menuOptionMap.keys())-1)
                 self.cursor.targetRect = Rect(50, 100+(self.cursorIndex*50), 64, 64)
-            if event.type == pg.KEYDOWN and event.key == pg.K_UP:
+            if event.type == pg.KEYDOWN and event.key in BUTTONS_MENU_UP:
                 self.cursorIndex = max(self.cursorIndex-1, 0)
                 self.cursor.targetRect = Rect(50, 100+(self.cursorIndex*50), 64, 64)
-            if event.type == pg.KEYDOWN and event.key in [pg.K_RETURN, pg.K_LEFT, pg.K_RIGHT]:
+            if event.type == pg.KEYDOWN and event.key in BUTTONS_MENU_CONFIRM + BUTTONS_MENU_LEFT + BUTTONS_MENU_RIGHT + BUTTONS_MENU_DENY:
                 menuFuncs = list(self.menuOptionMap.values())
                 menuFuncs[self.cursorIndex](event.key)
 
@@ -951,7 +967,7 @@ def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButto
     def LedBright(key):
         modifiers = pg.key.get_mods()
 
-        if (key == pg.K_RETURN) and (modifiers & pg.KMOD_LSHIFT):
+        if ((key == pg.K_RETURN) and (modifiers & pg.KMOD_LSHIFT)) or (key in BUTTONS_MENU_DENY):
             leds.BRIGHTNESS_MOD += 1
             if leds.BRIGHTNESS_MOD>3:
                 leds.BRIGHTNESS_MOD = 0
@@ -963,21 +979,21 @@ def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButto
         elif modifiers & pg.KMOD_LCTRL:
             modVal = 50
 
-        if key == pg.K_LEFT:
+        if key in BUTTONS_MENU_LEFT:
             if leds.BRIGHTNESS_MOD == 0 or leds.BRIGHTNESS_MOD == 1:
                 leds.STAR_BRIGHTNESS_A = max(leds.STAR_BRIGHTNESS_A-modVal, 1)
             if leds.BRIGHTNESS_MOD == 0 or leds.BRIGHTNESS_MOD == 2:
                 leds.STAR_BRIGHTNESS_B = max(leds.STAR_BRIGHTNESS_B-modVal, 1)
             if leds.BRIGHTNESS_MOD == 0 or leds.BRIGHTNESS_MOD == 3:
                 leds.GOAT_BRIGHTNESS = max(leds.GOAT_BRIGHTNESS-modVal, 1)
-        if key == pg.K_RIGHT:
+        if key in BUTTONS_MENU_RIGHT:
             if leds.BRIGHTNESS_MOD == 0 or leds.BRIGHTNESS_MOD == 1:
                 leds.STAR_BRIGHTNESS_A = min(leds.STAR_BRIGHTNESS_A+modVal, 255)
             if leds.BRIGHTNESS_MOD == 0 or leds.BRIGHTNESS_MOD == 2:
                 leds.STAR_BRIGHTNESS_B = min(leds.STAR_BRIGHTNESS_B+modVal, 255)
             if leds.BRIGHTNESS_MOD == 0 or leds.BRIGHTNESS_MOD == 3:
                 leds.GOAT_BRIGHTNESS = min(leds.GOAT_BRIGHTNESS+modVal, 255)
-        if key == pg.K_RETURN:
+        if key in BUTTONS_MENU_CONFIRM:
             if leds.BRIGHTNESS_MOD == 0 or leds.BRIGHTNESS_MOD == 1:
                 if leds.STAR_BRIGHTNESS_A > 255/2:
                     newBright = 10
@@ -1010,7 +1026,7 @@ def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButto
             # exit game loop and shut down leds
             player.kill()
             return
-        if event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
+        if event.type == pg.KEYDOWN and event.key in BUTTONS_MENU_OPEN:
             GAME_STATE.CURRENT_MENU = MenuScreen(screen, {"Zurück zum Spiel": CloseMenu, LedText: ToggleLedActive, LedBrightText: LedBright, "Neues Spiel (Normal)": Reset6, "Neues Spiel (Einfach)": Reset3, "Spiel Beenden": QuitGame})
             return
         if event.type == pg.KEYDOWN and event.key == pg.K_PAGEUP:
@@ -1019,17 +1035,17 @@ def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButto
         if event.type == pg.KEYDOWN and event.key == pg.K_PAGEDOWN:
             Reset3(event.key)
             return
-        if event.type == pg.KEYDOWN and event.key == pg.K_RIGHT:
+        if event.type == pg.KEYDOWN and event.key in BUTTONS_MOVE_RIGHT:
             if not GAME_STATE.REPLAY:
-                RECORDING["movements"].append({"frame": GAME_STATE.FRAME_COUNT, "key": event.key});
+                RECORDING["movements"].append({"frame": GAME_STATE.FRAME_COUNT, "key": pg.K_RIGHT});
                 player.move(1)
-        if event.type == pg.KEYDOWN and event.key == pg.K_LEFT:
+        if event.type == pg.KEYDOWN and event.key in BUTTONS_MOVE_LEFT:
             if not GAME_STATE.REPLAY:
-                RECORDING["movements"].append({"frame": GAME_STATE.FRAME_COUNT, "key": event.key});
+                RECORDING["movements"].append({"frame": GAME_STATE.FRAME_COUNT, "key": pg.K_LEFT});
                 player.move(-1)
-        if event.type == pg.KEYDOWN and event.key == pg.K_UP:
+        if event.type == pg.KEYDOWN and event.key in BUTTONS_JUMP:
             if not GAME_STATE.REPLAY:
-                RECORDING["movements"].append({"frame": GAME_STATE.FRAME_COUNT, "key": event.key});
+                RECORDING["movements"].append({"frame": GAME_STATE.FRAME_COUNT, "key": pg.K_UP});
                 player.jump([star for star in stars if star.hangingLow])
         if event.type == pg.KEYDOWN and ((event.key == pg.K_F7) or (event.key == pg.K_F10)):
             load_last_recording()
