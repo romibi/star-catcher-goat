@@ -368,10 +368,10 @@ void loop() {
   if (curr_LEFT) radiopacket[radiopacketPointer++] = 'l';
   if (curr_RIGHT) radiopacket[radiopacketPointer++] = 'r';
 
-  if(trigger_R) playMelody(MELODY_POINT);
-  if(trigger_Y) playMelody(MELODY_TWINKLE);
-  if(trigger_START) playMelody(MELODY_FANFARE);
-  if(trigger_SELECT) playMelody(MELODY_CHEST);
+  //if(trigger_R) playMelody(MELODY_POINT);
+  //if(trigger_Y) playMelody(MELODY_TWINKLE);
+  //if(trigger_START) playMelody(MELODY_FANFARE);
+  //if(trigger_SELECT) playMelody(MELODY_CHEST);
   
   if (anyTrigger)
     tone(BUZZER, 45, 50);
