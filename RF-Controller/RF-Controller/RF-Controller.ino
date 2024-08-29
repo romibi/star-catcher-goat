@@ -291,6 +291,7 @@ void loop() {
     // Wait for a message addressed to us from the client
     uint8_t len = sizeof(buf);
     uint8_t from;
+    // or use no ack?: if (rf69_manager.recvfrom(buf, &len, &from)) {
     if (rf69_manager.recvfromAck(buf, &len, &from)) {
       buf[len] = 0; // zero out remaining string
 

@@ -53,6 +53,15 @@ BUTTONS_MOVE_LEFT = [pg.K_LEFT]
 BUTTONS_MOVE_RIGHT = [pg.K_RIGHT, pg.K_RETURN]
 BUTTONS_JUMP = [pg.K_UP, pg.K_SPACE]
 
+SERIAL_BUTTON_R = pg.K_RETURN
+SERIAL_BUTTON_Y = pg.K_SPACE
+SERIAL_BUTTON_START = pg.K_ESCAPE
+SERIAL_BUTTON_SELECT = pg.K_BACKSPACE # unused?
+SERIAL_BUTTON_UP = pg.K_UP
+SERIAL_BUTTON_DOWN = pg.K_DOWN
+SERIAL_BUTTON_LEFT = pg.K_LEFT
+SERIAL_BUTTON_RIGHT = pg.K_RIGHT
+
 
 main_dir = os.path.split(os.path.abspath(__file__))[0]
 
@@ -124,6 +133,10 @@ class GameState():
 
     CONTROLLER_COM_ADDR = ''
     CONTROLLER_COM = None
+
+    CONTROLLER_PLAY_CATCH_SOUND = False
+
+    LAST_SERIAL_BUTTONS = []
 
 
 GAME_CONFIG = GameConfig()
@@ -646,7 +659,8 @@ class Player(pg.sprite.Sprite):
             if star.gridPosX == self.HornColumn:
                 self.starsCatchedHorn += 1
                 self.HornGlow()
-                # triggerControllerSound("twinkle"); # note: blocks receiving controller data
+                if GAME_STATE.CONTROLLER_PLAY_CATCH_SOUND:
+                    triggerControllerSound("twinkle"); # note: blocks receiving controller data
                 #print(f"Catching Star: x:{star.gridPosX} y:{star.gridPosX}")
                 star.kill()
         return
@@ -655,12 +669,14 @@ class Player(pg.sprite.Sprite):
         if star.gridPosX == self.HornColumn:
             self.starsCatchedHorn += 1
             self.HornGlow()
-            # triggerControllerSound("point") # note: blocks receiving controller data
+            if GAME_STATE.CONTROLLER_PLAY_CATCH_SOUND:
+                triggerControllerSound("point") # note: blocks receiving controller data
             return True
         elif star.gridPosX == self.ButtColumn:
             self.starsCatchedButt += 1
             self.BodyGlow()
-            # triggerControllerSound("point") # note: blocks recevingin controller data
+            if GAME_STATE.CONTROLLER_PLAY_CATCH_SOUND:
+                triggerControllerSound("point") # note: blocks recevingin controller data
             return True
         return False
 
@@ -753,24 +769,34 @@ class MenuScreen():
         self.background.blit(overlayBg, (0, 0))
 
 
-    def Loop(self):
+    def Loop(self, serial_keys):
+        def handleKey(key):
+            if key in BUTTONS_MENU_CLOSE:
+                CloseMenu(event.key)
+                return True
+            if key in BUTTONS_MENU_DOWN:
+                self.cursorIndex = min(self.cursorIndex+1, len(self.menuOptionMap.keys())-1)
+                self.cursor.targetRect = Rect(50, 100+(self.cursorIndex*50), 64, 64)
+            if key in BUTTONS_MENU_UP:
+                self.cursorIndex = max(self.cursorIndex-1, 0)
+                self.cursor.targetRect = Rect(50, 100+(self.cursorIndex*50), 64, 64)
+            if key in BUTTONS_MENU_CONFIRM + BUTTONS_MENU_LEFT + BUTTONS_MENU_RIGHT + BUTTONS_MENU_DENY:
+                menuFuncs = list(self.menuOptionMap.values())
+                menuFuncs[self.cursorIndex](key)
+            return False
+
         self.frame += 1
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 GAME_STATE.GAME_QUIT = True
                 return
-            if event.type == pg.KEYDOWN and event.key in BUTTONS_MENU_CLOSE:
-                CloseMenu(event.key)
+            if event.type == pg.KEYDOWN:
+                if handleKey(event.key):
+                    return
+
+        for key in serial_keys:
+            if handleKey(key):
                 return
-            if event.type == pg.KEYDOWN and event.key in BUTTONS_MENU_DOWN:
-                self.cursorIndex = min(self.cursorIndex+1, len(self.menuOptionMap.keys())-1)
-                self.cursor.targetRect = Rect(50, 100+(self.cursorIndex*50), 64, 64)
-            if event.type == pg.KEYDOWN and event.key in BUTTONS_MENU_UP:
-                self.cursorIndex = max(self.cursorIndex-1, 0)
-                self.cursor.targetRect = Rect(50, 100+(self.cursorIndex*50), 64, 64)
-            if event.type == pg.KEYDOWN and event.key in BUTTONS_MENU_CONFIRM + BUTTONS_MENU_LEFT + BUTTONS_MENU_RIGHT + BUTTONS_MENU_DENY:
-                menuFuncs = list(self.menuOptionMap.values())
-                menuFuncs[self.cursorIndex](event.key)
 
         if self.frame == 0:
             self.screen.blit(self.background, (0, 0))
@@ -819,6 +845,46 @@ def triggerControllerSound(name):
     if GAME_STATE.CONTROLLER_COM:
         GAME_STATE.CONTROLLER_COM.write(bytes(f"play {name}", 'utf-8'))
         GAME_STATE.CONTROLLER_COM.flush()
+
+def GetButtonsFromSerial():
+    result = []
+    if not GAME_STATE.CONTROLLER_COM:
+        return result
+
+    lastLine = ""
+
+    bytesToRead =  GAME_STATE.CONTROLLER_COM.inWaiting()
+    data =  GAME_STATE.CONTROLLER_COM.read(bytesToRead)
+    lines = data.decode("utf-8").splitlines()
+
+    for line in lines:
+        print(f"Serial: {line}")
+        if line.startswith("BUTTONS:"):
+            lastLine = line
+        if line == "":
+            break
+
+    if lastLine != "":
+        lastLine = lastLine.replace("BUTTONS:", "")
+        for char in lastLine:
+            match char:
+                case "R":
+                    result += [SERIAL_BUTTON_R]
+                case "Y":
+                    result += [SERIAL_BUTTON_Y]
+                case "S":
+                    result += [SERIAL_BUTTON_START]
+                case "s":
+                    result += [SERIAL_BUTTON_SELECT]
+                case "u":
+                    result += [SERIAL_BUTTON_UP]
+                case "d":
+                    result += [SERIAL_BUTTON_DOWN]
+                case "l":
+                    result += [SERIAL_BUTTON_LEFT]
+                case "r":
+                    result += [SERIAL_BUTTON_RIGHT]
+    return result
 
 
 def CloseMenu(key):
@@ -907,19 +973,36 @@ def main(winstyle=0):
     for port in ports:
       if port.description == 'Feather 32u4':
         GAME_STATE.CONTROLLER_COM_ADDR = port.device
-        GAME_STATE.CONTROLLER_COM = serial.Serial(port=port.device, baudrate=9600, timeout=.1)
+        try:
+            GAME_STATE.CONTROLLER_COM = serial.Serial(port=port.device, baudrate=9600, timeout=.1)
+            GAME_STATE.CONTROLLER_COM.write(bytes(f"serial on", 'utf-8'))
+            GAME_STATE.CONTROLLER_COM.flush()
+        except:
+            GAME_STATE.CONTROLLER_COM = None
 
     # reset before first loop to have same random starting condition as in replay
     ResetGame(6, player, stars, screen, leds)
 
     # Run our main loop whilst the player is alive.
     while player.alive() and not GAME_STATE.GAME_QUIT:
+        # get currently pressed buttons on serial contrller
+        serial_keys = GetButtonsFromSerial()
+        next_key_list = serial_keys.copy() # copy for next frame
+
+        # remove keys already pressed last time
+        for key in GAME_STATE.LAST_SERIAL_BUTTONS:
+            if key in serial_keys:
+                serial_keys.remove(key)
+
+        # set current list as pressed last time
+        GAME_STATE.LAST_SERIAL_BUTTONS = next_key_list
+
         if GAME_STATE.CURRENT_MENU:
-            GAME_STATE.CURRENT_MENU.Loop()
+            GAME_STATE.CURRENT_MENU.Loop(serial_keys)
         else:
             # todo: move scoreText, statText, statMissedText, gameButtons, endButtons and background to some GUI class/object contained in GAME_STATE
             # todo: move player, stars, leds,, gameSpprites, screen and background to GAME_STATE
-            PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButtons, endButtons, gameSprites, screen, background)
+            PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButtons, endButtons, gameSprites, screen, background, serial_keys)
             GAME_STATE.MENU_JUST_CLOSED = False
 
         # cap the framerate at 10fps. Also called 10HZ or 10 times per second.
@@ -927,6 +1010,12 @@ def main(winstyle=0):
 
     leds.SetAllLedsOff()
     leds.UpdateLeds()
+
+    if GAME_STATE.CONTROLLER_COM:
+        # controller seems to get buggy on serial off ...
+        #GAME_STATE.CONTROLLER_COM.write(bytes(f"serial off", 'utf-8'))
+        #GAME_STATE.CONTROLLER_COM.flush()
+        GAME_STATE.CONTROLLER_COM = None
 
     if pg.mixer:
         # todo: really add music and maybe some sample trigger commands to controller
@@ -945,7 +1034,7 @@ def ReRenderBackground(screen):
     screen.blit(background, (0, 0))
 
 
-def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButtons, endButtons, gameSprites, screen, background):
+def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButtons, endButtons, gameSprites, screen, background, serial_keys):
     GAME_STATE.FRAME_COUNT += 1
 
     # todo: move menu definition outside play loop
@@ -1040,75 +1129,110 @@ def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButto
         leds.UpdateLeds()
 
     def ControllerText():
-      ports = serial.tools.list_ports.comports()
-      for port in ports:
-        if GAME_STATE.CONTROLLER_COM_ADDR == port.device:
-          return f"Controller Commands Device: {port.description}"
-      return f"Controller Commands Device: <none>"
+        ports = serial.tools.list_ports.comports()
+        for port in ports:
+            if GAME_STATE.CONTROLLER_COM_ADDR == port.device:
+                if GAME_STATE.CONTROLLER_COM:
+                    return f"[X] Serial Controller: {port.description}"
+                else:
+                    return f"[ ] Serial Controller: {port.description}"
+        GAME_STATE.CONTROLLER_COM = None
+        return f"[ ] Controller Commands Device: <none>"
 
     def ControllerAction(key):
-      ports = serial.tools.list_ports.comports()
-      current_index = -1
-      i = 0
-      for port in ports:
-        print(f"Port {i}: {port.device}: {port.description}")
-        if GAME_STATE.CONTROLLER_COM_ADDR == port.device:
-          current_index = i
-        i += 1
-      
-      new_index = current_index
-      print(f"current index: {current_index}")
-      
-      if key in BUTTONS_MENU_LEFT:
-        new_index -= 1
-      if key in BUTTONS_MENU_RIGHT:
-        new_index += 1
-      
-      if (new_index < -1) or (new_index >= len(ports)):
-        new_index = -1
-      
-      print(f"new index: {new_index}")
-      
-      if new_index >= 0:
-        GAME_STATE.CONTROLLER_COM_ADDR = ports[new_index].device
-        GAME_STATE.CONTROLLER_COM = serial.Serial(port=ports[new_index].device, baudrate=9600, timeout=.1)
-      else:
-        GAME_STATE.CONTROLLER_COM_ADDR = ''
-        GAME_STATE.CONTROLLER_COM = None
+        ports = serial.tools.list_ports.comports()
+        current_index = -1
+        i = 0
+        for port in ports:
+            print(f"Port {i}: {port.device}: {port.description}")
+            if GAME_STATE.CONTROLLER_COM_ADDR == port.device:
+                current_index = i
+            i += 1
+        
+        new_index = current_index
+        
+        if key in BUTTONS_MENU_LEFT:
+            new_index -= 1
+        if key in BUTTONS_MENU_RIGHT:
+            new_index += 1
+        
+        if (new_index < -1) or (new_index >= len(ports)):
+            new_index = -1
+        
+        if new_index >= 0:
+            GAME_STATE.CONTROLLER_COM_ADDR = ports[new_index].device
+        else:
+            GAME_STATE.CONTROLLER_COM_ADDR = ''
+
+        if key in BUTTONS_MENU_CONFIRM:
+            if GAME_STATE.CONTROLLER_COM:
+                GAME_STATE.CONTROLLER_COM.write(bytes(f"serial off", 'utf-8'))
+                GAME_STATE.CONTROLLER_COM.flush()
+                GAME_STATE.CONTROLLER_COM = None
+            else:
+                try:
+                    GAME_STATE.CONTROLLER_COM = serial.Serial(port=ports[new_index].device, baudrate=9600, timeout=.1)
+                    GAME_STATE.CONTROLLER_COM.write(bytes(f"serial on", 'utf-8'))
+                    GAME_STATE.CONTROLLER_COM.flush()
+                except:
+                    GAME_STATE.CONTROLLER_COM = None
+
+
+    def ControllerSoundText():
+        if GAME_STATE.CONTROLLER_PLAY_CATCH_SOUND:
+            return "Controller Sounds: Viel"
+        else:
+            return "Controller Sounds: Wenig"
+
+    def ToggleControllerSound(key):
+        GAME_STATE.CONTROLLER_PLAY_CATCH_SOUND = not GAME_STATE.CONTROLLER_PLAY_CATCH_SOUND
+       
 
     # get input
+    def handleKey(key):
+        if key in BUTTONS_MENU_OPEN:
+            GAME_STATE.CURRENT_MENU = MenuScreen(screen, {"Zurück zum Spiel": CloseMenu, LedText: ToggleLedActive, LedBrightText: LedBright, ControllerText: ControllerAction, ControllerSoundText: ToggleControllerSound, "Neues Spiel (Normal)": Reset6, "Neues Spiel (Einfach)": Reset3, "Spiel Beenden": QuitGame})
+            return True
+        if key == pg.K_PAGEUP:
+            Reset6(event.key)
+            return True
+        if key == pg.K_PAGEDOWN:
+            Reset3(event.key)
+            return True
+        if key in BUTTONS_MOVE_RIGHT:
+            if not GAME_STATE.REPLAY:
+                RECORDING["movements"].append({"frame": GAME_STATE.FRAME_COUNT, "key": pg.K_RIGHT});
+                player.move(1)
+        if key in BUTTONS_MOVE_LEFT:
+            if not GAME_STATE.REPLAY:
+                RECORDING["movements"].append({"frame": GAME_STATE.FRAME_COUNT, "key": pg.K_LEFT});
+                player.move(-1)
+        if key in BUTTONS_JUMP:
+            if not GAME_STATE.REPLAY:
+                RECORDING["movements"].append({"frame": GAME_STATE.FRAME_COUNT, "key": pg.K_UP});
+                player.jump([star for star in stars if star.hangingLow])
+        if ((key == pg.K_F7) or (key == pg.K_F10)):
+            load_last_recording()
+            replay(RECORDING, player, stars, screen, leds)
+            return True
+        if ((key == pg.K_F8) or (key == pg.K_F11)):
+            replay(RECORDING, player, stars, screen, leds)
+            return True
+        return False
+
+    # handle input from OS
     for event in pg.event.get():
         if event.type == pg.QUIT:
             # exit game loop and shut down leds
             player.kill()
             return
-        if event.type == pg.KEYDOWN and event.key in BUTTONS_MENU_OPEN:
-            GAME_STATE.CURRENT_MENU = MenuScreen(screen, {"Zurück zum Spiel": CloseMenu, LedText: ToggleLedActive, LedBrightText: LedBright, ControllerText: ControllerAction, "Neues Spiel (Normal)": Reset6, "Neues Spiel (Einfach)": Reset3, "Spiel Beenden": QuitGame})
-            return
-        if event.type == pg.KEYDOWN and event.key == pg.K_PAGEUP:
-            Reset6(event.key)
-            return
-        if event.type == pg.KEYDOWN and event.key == pg.K_PAGEDOWN:
-            Reset3(event.key)
-            return
-        if event.type == pg.KEYDOWN and event.key in BUTTONS_MOVE_RIGHT:
-            if not GAME_STATE.REPLAY:
-                RECORDING["movements"].append({"frame": GAME_STATE.FRAME_COUNT, "key": pg.K_RIGHT});
-                player.move(1)
-        if event.type == pg.KEYDOWN and event.key in BUTTONS_MOVE_LEFT:
-            if not GAME_STATE.REPLAY:
-                RECORDING["movements"].append({"frame": GAME_STATE.FRAME_COUNT, "key": pg.K_LEFT});
-                player.move(-1)
-        if event.type == pg.KEYDOWN and event.key in BUTTONS_JUMP:
-            if not GAME_STATE.REPLAY:
-                RECORDING["movements"].append({"frame": GAME_STATE.FRAME_COUNT, "key": pg.K_UP});
-                player.jump([star for star in stars if star.hangingLow])
-        if event.type == pg.KEYDOWN and ((event.key == pg.K_F7) or (event.key == pg.K_F10)):
-            load_last_recording()
-            replay(RECORDING, player, stars, screen, leds)
-            return
-        if event.type == pg.KEYDOWN and ((event.key == pg.K_F8) or (event.key == pg.K_F11)):
-            replay(RECORDING, player, stars, screen, leds)
+        if event.type == pg.KEYDOWN:
+            if handleKey(event.key):
+                return        
+
+    # handle input from serial
+    for key in serial_keys:
+        if handleKey(key):
             return
 
     if GAME_STATE.REPLAY:

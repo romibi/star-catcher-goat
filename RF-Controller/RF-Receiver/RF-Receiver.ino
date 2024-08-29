@@ -49,6 +49,8 @@ RH_RF69 rf69(RFM69_CS, RFM69_INT);
 // Class to manage message delivery and receipt, using the driver declared above
 RHReliableDatagram rf69_manager(rf69, MY_ADDRESS);
 
+bool USE_SERIAL = false;
+
 bool last_R = false;
 bool last_Y = false;
 bool last_START = false;
@@ -94,9 +96,6 @@ void setup() {
   pinMode(RFM69_RST, OUTPUT);
   digitalWrite(RFM69_RST, LOW);
 
-  Serial.println("Feather Addressed RFM69 RX Test!");
-  Serial.println();
-
   // manual reset
   digitalWrite(RFM69_RST, HIGH);
   delay(10);
@@ -111,7 +110,7 @@ void setup() {
   // Defaults after init are 434.0MHz, modulation GFSK_Rb250Fd250, +13dbM (for low power module)
   // No encryption
   if (!rf69.setFrequency(RF69_FREQ)) {
-    Serial.println("setFrequency failed");
+    Serial.println("RFM69 setFrequency failed");
   }
 
   // If you are using a high power RF69 eg RFM69HW, you *must* set a Tx power with the
@@ -136,12 +135,40 @@ void loop() {
   if(Serial.available()>0) {
     String command = Serial.readStringUntil('\n');
     command.trim();
-    int str_len = command.length() + 1;
-    char cmddata[str_len];
-    command.toCharArray(cmddata, str_len);
 
-    if (!rf69_manager.sendtoWait(cmddata, sizeof(cmddata), DEST_ADDRESS)) {
-      Serial.println("Sending failed (no ack)");
+    if (command.equals("serial on")) {
+      USE_SERIAL = true;
+      
+      if(last_R) Keyboard.release(BTN_KEY_R);
+      if(last_Y) Keyboard.release(BTN_KEY_Y);
+      if(last_START) Keyboard.release(BTN_KEY_START);
+      if(last_SELECT) Keyboard.release(BTN_KEY_SELECT);
+      if(last_UP) Keyboard.release(BTN_KEY_UP);
+      if(last_DOWN) Keyboard.release(BTN_KEY_DOWN);
+      if(last_LEFT) Keyboard.release(BTN_KEY_LEFT);
+      if(last_RIGHT) Keyboard.release(BTN_KEY_RIGHT);
+
+      return;
+    } else if (command.equals("serial off")) {
+      USE_SERIAL = false;
+      
+      last_R = false;
+      last_Y = false;
+      last_START = false;
+      last_SELECT = false;
+      last_UP = false;
+      last_DOWN = false;
+      last_LEFT = false;
+      last_RIGHT = false;
+      return;
+    } else { // command for controller
+      int str_len = command.length() + 1;
+      char cmddata[str_len];
+      command.toCharArray(cmddata, str_len);
+
+      if (!rf69_manager.sendto(cmddata, sizeof(cmddata), DEST_ADDRESS)) {
+        Serial.println("RFM69 Sending failed (no ack)");
+      }
     }
   }
 
@@ -153,100 +180,107 @@ void loop() {
     
     if (rf69_manager.recvfromAck(buf, &len, &from)) {
       buf[len] = 0; // zero out remaining string
-
-      Serial.print("Got packet from #"); Serial.print(from);
-      Serial.print(" [RSSI :");
-      Serial.print(rf69.lastRssi());
-      Serial.print("] : ");
-      Serial.println((char*)buf);
       
-      curr_R = false;
-      curr_Y = false;
-      curr_START = false;
-      curr_SELECT = false;
-      curr_UP = false;
-      curr_DOWN = false;
-      curr_LEFT = false;
-      curr_RIGHT = false;
+      if(USE_SERIAL) {
+        Serial.print("BUTTONS:");
+        Serial.println((char*)buf);
+      } else {
 
-      for (int i=0; i < len; i++) {
-        switch(buf[i]) {
-          case 'R':
-            curr_R = true;
-            break;
-          case 'Y':
-            curr_Y = true;
-            break;
-          case 'S':
-            curr_START = true;
-            break;
-          case 's':
-            curr_SELECT = true;
-            break;
-          case 'u':
-            curr_UP = true;
-            break;
-          case 'd':
-            curr_DOWN = true;
-            break;
-          case 'l':
-            curr_LEFT = true;
-            break;
-          case 'r':
-            curr_RIGHT = true;
-            break;
+        Serial.print("RFM69 Got packet from #"); Serial.print(from);
+        Serial.print(" [RSSI :");
+        Serial.print(rf69.lastRssi());
+        Serial.print("] : ");
+        Serial.println((char*)buf);
+
+        curr_R = false;
+        curr_Y = false;
+        curr_START = false;
+        curr_SELECT = false;
+        curr_UP = false;
+        curr_DOWN = false;
+        curr_LEFT = false;
+        curr_RIGHT = false;
+
+        for (int i=0; i < len; i++) {
+          switch(buf[i]) {
+            case 'R':
+              curr_R = true;
+              break;
+            case 'Y':
+              curr_Y = true;
+              break;
+            case 'S':
+              curr_START = true;
+              break;
+            case 's':
+              curr_SELECT = true;
+              break;
+            case 'u':
+              curr_UP = true;
+              break;
+            case 'd':
+              curr_DOWN = true;
+              break;
+            case 'l':
+              curr_LEFT = true;
+              break;
+            case 'r':
+              curr_RIGHT = true;
+              break;
+          }
         }
       }
     }
   }
+  if(!USE_SERIAL) {
+    // update button states
+    trigger_R = (!last_R) && curr_R;
+    trigger_Y = (!last_Y) && curr_Y;
+    trigger_START = (!last_START) && curr_START;
+    trigger_SELECT = (!last_SELECT) && curr_SELECT;
+    trigger_UP = (!last_UP) && curr_UP;
+    trigger_RIGHT = (!last_RIGHT) && curr_RIGHT;
+    trigger_LEFT = (!last_LEFT) && curr_LEFT;
+    trigger_DOWN = (!last_DOWN) && curr_DOWN;
 
-  // update button states
-  trigger_R = (!last_R) && curr_R;
-  trigger_Y = (!last_Y) && curr_Y;
-  trigger_START = (!last_START) && curr_START;
-  trigger_SELECT = (!last_SELECT) && curr_SELECT;
-  trigger_UP = (!last_UP) && curr_UP;
-  trigger_RIGHT = (!last_RIGHT) && curr_RIGHT;
-  trigger_LEFT = (!last_LEFT) && curr_LEFT;
-  trigger_DOWN = (!last_DOWN) && curr_DOWN;
+    released_R = last_R && (!curr_R);
+    released_Y = last_Y && (!curr_Y);
+    released_START = last_START && (!curr_START);
+    released_SELECT = last_SELECT && (!curr_SELECT);
+    released_UP = last_UP && (!curr_UP);
+    released_RIGHT = last_RIGHT && (!curr_RIGHT);
+    released_LEFT = last_LEFT && (!curr_LEFT);
+    released_DOWN = last_DOWN && (!curr_DOWN);
 
-  released_R = last_R && (!curr_R);
-  released_Y = last_Y && (!curr_Y);
-  released_START = last_START && (!curr_START);
-  released_SELECT = last_SELECT && (!curr_SELECT);
-  released_UP = last_UP && (!curr_UP);
-  released_RIGHT = last_RIGHT && (!curr_RIGHT);
-  released_LEFT = last_LEFT && (!curr_LEFT);
-  released_DOWN = last_DOWN && (!curr_DOWN);
+    // send Keyboard events
+    if(trigger_R) Keyboard.press(BTN_KEY_R);
+    if(trigger_Y) Keyboard.press(BTN_KEY_Y);
+    if(trigger_START) Keyboard.press(BTN_KEY_START);
+    if(trigger_SELECT) Keyboard.press(BTN_KEY_SELECT);
+    if(trigger_UP) Keyboard.press(BTN_KEY_UP);
+    if(trigger_DOWN) Keyboard.press(BTN_KEY_DOWN);
+    if(trigger_LEFT) Keyboard.press(BTN_KEY_LEFT);
+    if(trigger_RIGHT) Keyboard.press(BTN_KEY_RIGHT);
 
-  // send Keyboard events
-  if(trigger_R) Keyboard.press(BTN_KEY_R);
-  if(trigger_Y) Keyboard.press(BTN_KEY_Y);
-  if(trigger_START) Keyboard.press(BTN_KEY_START);
-  if(trigger_SELECT) Keyboard.press(BTN_KEY_SELECT);
-  if(trigger_UP) Keyboard.press(BTN_KEY_UP);
-  if(trigger_DOWN) Keyboard.press(BTN_KEY_DOWN);
-  if(trigger_LEFT) Keyboard.press(BTN_KEY_LEFT);
-  if(trigger_RIGHT) Keyboard.press(BTN_KEY_RIGHT);
+    if(released_R) Keyboard.release(BTN_KEY_R);
+    if(released_Y) Keyboard.release(BTN_KEY_Y);
+    if(released_START) Keyboard.release(BTN_KEY_START);
+    if(released_SELECT) Keyboard.release(BTN_KEY_SELECT);
+    if(released_UP) Keyboard.release(BTN_KEY_UP);
+    if(released_DOWN) Keyboard.release(BTN_KEY_DOWN);
+    if(released_LEFT) Keyboard.release(BTN_KEY_LEFT);
+    if(released_RIGHT) Keyboard.release(BTN_KEY_RIGHT);
 
-  if(released_R) Keyboard.release(BTN_KEY_R);
-  if(released_Y) Keyboard.release(BTN_KEY_Y);
-  if(released_START) Keyboard.release(BTN_KEY_START);
-  if(released_SELECT) Keyboard.release(BTN_KEY_SELECT);
-  if(released_UP) Keyboard.release(BTN_KEY_UP);
-  if(released_DOWN) Keyboard.release(BTN_KEY_DOWN);
-  if(released_LEFT) Keyboard.release(BTN_KEY_LEFT);
-  if(released_RIGHT) Keyboard.release(BTN_KEY_RIGHT); 
-
-  // prepare next loop
-  last_R = curr_R;
-  last_Y = curr_Y;
-  last_START = curr_START;
-  last_SELECT = curr_SELECT;
-  last_UP = curr_UP;
-  last_DOWN = curr_DOWN;
-  last_LEFT = curr_LEFT;
-  last_RIGHT = curr_RIGHT;
+    // prepare next loop
+    last_R = curr_R;
+    last_Y = curr_Y;
+    last_START = curr_START;
+    last_SELECT = curr_SELECT;
+    last_UP = curr_UP;
+    last_DOWN = curr_DOWN;
+    last_LEFT = curr_LEFT;
+    last_RIGHT = curr_RIGHT;
+  }
 
   delay(MIN_DELAY);
 }
