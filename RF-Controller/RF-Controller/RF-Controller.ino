@@ -245,6 +245,15 @@ void setup() {
 uint8_t buf[RH_RF69_MAX_MESSAGE_LEN];
 uint8_t data[] = "  OK";
 
+bool last_R = false;
+bool last_Y = false;
+bool last_START = false;
+bool last_SELECT = false;
+bool last_UP = false;
+bool last_RIGHT = false;
+bool last_LEFT = false;
+bool last_DOWN = false;
+
 bool curr_R = false;
 bool curr_Y = false;
 bool curr_START = false;
@@ -254,14 +263,28 @@ bool curr_RIGHT = false;
 bool curr_LEFT = false;
 bool curr_DOWN = false;
 
-bool last_R = false;
-bool last_Y = false;
-bool last_START = false;
-bool last_SELECT = false;
-bool last_UP = false;
-bool last_RIGHT = false;
-bool last_LEFT = false;
-bool last_DOWN = false;
+bool trigger_R = false;
+bool trigger_Y = false;
+bool trigger_START = false;
+bool trigger_SELECT = false;
+bool trigger_UP = false;
+bool trigger_RIGHT = false;
+bool trigger_LEFT = false;
+bool trigger_DOWN = false;
+
+bool released_R = false;
+bool released_Y = false;
+bool released_START = false;
+bool released_SELECT = false;
+bool released_UP = false;
+bool released_RIGHT = false;
+bool released_LEFT = false;
+bool released_DOWN = false;
+
+bool lastAnyButtonDown = false;
+bool anyButtonDown = false;
+bool anyTrigger = false;
+bool lastButtonReleased = false;
 
 void loop() {
   if (rf69_manager.available()) {
@@ -301,10 +324,6 @@ void loop() {
   int radiopacketPointer = 0;
   char radiopacket[20] = "";
 
-  unsigned int value = 0;
-  int button = false;
-  int aButtonPressed = false;
-
   playMelodyLoop();
 
   // Read Buttons
@@ -317,87 +336,48 @@ void loop() {
   curr_LEFT = digitalRead(BTN_LEFT)==LOW;
   curr_RIGHT = digitalRead(BTN_RIGHT)==LOW;
 
-  if (curr_R) {
-    radiopacket[radiopacketPointer] = 'R';
-    radiopacketPointer++;
+  trigger_R = (!last_R) && curr_R;
+  trigger_Y = (!last_Y) && curr_Y;
+  trigger_START = (!last_START) && curr_START;
+  trigger_SELECT = (!last_SELECT) && curr_SELECT;
+  trigger_UP = (!last_UP) && curr_UP;
+  trigger_RIGHT = (!last_RIGHT) && curr_RIGHT;
+  trigger_LEFT = (!last_LEFT) && curr_LEFT;
+  trigger_DOWN = (!last_DOWN) && curr_DOWN;
 
-    if(!last_R) {
-      playMelody(MELODY_POINT);
-      aButtonPressed = true;
-    }
-  }
-  
-  if (curr_Y) {
-    radiopacket[radiopacketPointer] = 'Y';
-    radiopacketPointer++;
+  released_R = last_R && (!curr_R);
+  released_Y = last_Y && (!curr_Y);
+  released_START = last_START && (!curr_START);
+  released_SELECT = last_SELECT && (!curr_SELECT);
+  released_UP = last_UP && (!curr_UP);
+  released_RIGHT = last_RIGHT && (!curr_RIGHT);
+  released_LEFT = last_LEFT && (!curr_LEFT);
+  released_DOWN = last_DOWN && (!curr_DOWN);
 
-    if(!last_Y) {
-      playMelody(MELODY_TWINKLE);
-      aButtonPressed = true;
-    }
-  }
-  
-  if (curr_START) {
-    radiopacket[radiopacketPointer] = 'S';
-    radiopacketPointer++;
+  bool lastAnyButtonDown = last_R || last_Y || last_START || last_SELECT || last_UP || last_DOWN || last_LEFT || last_RIGHT;
+  bool anyButtonDown = curr_R || curr_Y || curr_START || curr_SELECT || curr_UP || curr_DOWN || curr_LEFT || curr_RIGHT;
+  bool anyTrigger = trigger_R || trigger_Y || trigger_START || trigger_SELECT || trigger_UP || trigger_DOWN || trigger_LEFT || trigger_RIGHT;
+  bool lastButtonReleased = lastAnyButtonDown && (!anyButtonDown);
 
-    if(!last_START) {
-      playMelody(MELODY_FANFARE);
-      aButtonPressed = true;
-    }
-  }
-  
-  if (curr_SELECT) {
-    radiopacket[radiopacketPointer] = 's';
-    radiopacketPointer++;
+  if (curr_R) radiopacket[radiopacketPointer++] = 'R';
+  if (curr_Y) radiopacket[radiopacketPointer++] = 'Y';
+  if (curr_START) radiopacket[radiopacketPointer++] = 'S';
+  if (curr_SELECT) radiopacket[radiopacketPointer++] = 's';
+  if (curr_UP) radiopacket[radiopacketPointer++] = 'u';
+  if (curr_DOWN) radiopacket[radiopacketPointer++] = 'd';
+  if (curr_LEFT) radiopacket[radiopacketPointer++] = 'l';
+  if (curr_RIGHT) radiopacket[radiopacketPointer++] = 'r';
 
-    if(!last_SELECT) {
-      playMelody(MELODY_CHEST);
-      aButtonPressed = true;
-    }
-  }
+  if(trigger_R) playMelody(MELODY_POINT);
+  if(trigger_Y) playMelody(MELODY_TWINKLE);
+  if(trigger_START) playMelody(MELODY_FANFARE);
+  if(trigger_SELECT) playMelody(MELODY_CHEST);
   
-  if (curr_UP) {
-    radiopacket[radiopacketPointer] = 'u';
-    radiopacketPointer++;
-
-    if(!last_UP) {
-      aButtonPressed = true;
-    }
-  }
-  
-  if (curr_DOWN) {
-    radiopacket[radiopacketPointer] = 'd';
-    radiopacketPointer++;
-
-    if(!last_DOWN) {
-      aButtonPressed = true;
-    }
-  }
-  
-  if (curr_RIGHT) {
-    radiopacket[radiopacketPointer] = 'r';
-    radiopacketPointer++;
-    
-    if(!last_RIGHT) {
-      aButtonPressed = true;
-    }
-  }
-  
-  if (curr_LEFT) {
-    radiopacket[radiopacketPointer] = 'l';
-    radiopacketPointer++;
-
-    if(!last_LEFT) {
-      aButtonPressed = true;
-    }
-  }
-  
-  if (aButtonPressed)
+  if (anyTrigger)
     tone(BUZZER, 45, 50);
 
   // Check if we need to resend
-  if(radiopacketPointer>0) {
+  if(anyButtonDown || lastButtonReleased) {
     // Status LED we will send
     digitalWrite(LED_BUILTIN, HIGH);
 
