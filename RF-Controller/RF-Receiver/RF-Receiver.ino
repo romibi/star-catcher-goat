@@ -9,6 +9,7 @@
 #include <SPI.h>
 #include <RH_RF69.h>
 #include <RHReliableDatagram.h>
+#include <Keyboard.h>
 
 /************ Radio Setup ***************/
 
@@ -20,6 +21,17 @@
 
 // Where to send packets to!
 #define DEST_ADDRESS 2
+
+// What are the buttons mapped to?
+#define BTN_KEY_R KEY_RETURN
+#define BTN_KEY_Y ' '
+#define BTN_KEY_START KEY_ESC
+#define BTN_KEY_SELECT KEY_BACKSPACE
+#define BTN_KEY_UP KEY_UP_ARROW
+#define BTN_KEY_DOWN KEY_DOWN_ARROW
+#define BTN_KEY_LEFT KEY_LEFT_ARROW
+#define BTN_KEY_RIGHT KEY_RIGHT_ARROW
+
 
 // First 3 here are boards w/radio BUILT-IN. Boards using FeatherWing follow.
 #if defined (__AVR_ATmega32U4__)  // Feather 32u4 w/Radio
@@ -36,6 +48,42 @@ RH_RF69 rf69(RFM69_CS, RFM69_INT);
 
 // Class to manage message delivery and receipt, using the driver declared above
 RHReliableDatagram rf69_manager(rf69, MY_ADDRESS);
+
+bool last_R = false;
+bool last_Y = false;
+bool last_START = false;
+bool last_SELECT = false;
+bool last_UP = false;
+bool last_RIGHT = false;
+bool last_LEFT = false;
+bool last_DOWN = false;
+
+bool curr_R = false;
+bool curr_Y = false;
+bool curr_START = false;
+bool curr_SELECT = false;
+bool curr_UP = false;
+bool curr_RIGHT = false;
+bool curr_LEFT = false;
+bool curr_DOWN = false;
+
+bool trigger_R = false;
+bool trigger_Y = false;
+bool trigger_START = false;
+bool trigger_SELECT = false;
+bool trigger_UP = false;
+bool trigger_RIGHT = false;
+bool trigger_LEFT = false;
+bool trigger_DOWN = false;
+
+bool released_R = false;
+bool released_Y = false;
+bool released_START = false;
+bool released_SELECT = false;
+bool released_UP = false;
+bool released_RIGHT = false;
+bool released_LEFT = false;
+bool released_DOWN = false;
 
 void setup() {
   Serial.begin(115200);
@@ -84,6 +132,20 @@ uint8_t data[] = "And hello back to you";
 uint8_t buf[RH_RF69_MAX_MESSAGE_LEN];
 
 void loop() {
+  // parse commands from serial
+  if(Serial.available()>0) {
+    String command = Serial.readStringUntil('\n');
+    command.trim();
+    int str_len = command.length() + 1;
+    char cmddata[str_len];
+    command.toCharArray(cmddata, str_len);
+
+    if (!rf69_manager.sendtoWait(cmddata, sizeof(cmddata), DEST_ADDRESS)) {
+      Serial.println("Sending failed (no ack)");
+    }
+  }
+
+  // receive data from RF
   if (rf69_manager.available()) {
     // Wait for a message addressed to us from the client
     uint8_t len = sizeof(buf);
@@ -97,19 +159,94 @@ void loop() {
       Serial.print(rf69.lastRssi());
       Serial.print("] : ");
       Serial.println((char*)buf);
+      
+      curr_R = false;
+      curr_Y = false;
+      curr_START = false;
+      curr_SELECT = false;
+      curr_UP = false;
+      curr_DOWN = false;
+      curr_LEFT = false;
+      curr_RIGHT = false;
+
+      for (int i=0; i < len; i++) {
+        switch(buf[i]) {
+          case 'R':
+            curr_R = true;
+            break;
+          case 'Y':
+            curr_Y = true;
+            break;
+          case 'S':
+            curr_START = true;
+            break;
+          case 's':
+            curr_SELECT = true;
+            break;
+          case 'u':
+            curr_UP = true;
+            break;
+          case 'd':
+            curr_DOWN = true;
+            break;
+          case 'l':
+            curr_LEFT = true;
+            break;
+          case 'r':
+            curr_RIGHT = true;
+            break;
+        }
+      }
     }
   }
 
-  if(Serial.available()>0) {
-    String command = Serial.readStringUntil('\n');
-    command.trim();
-    int str_len = command.length() + 1;
-    char cmddata[str_len];
-    command.toCharArray(cmddata, str_len);
+  // update button states
+  trigger_R = (!last_R) && curr_R;
+  trigger_Y = (!last_Y) && curr_Y;
+  trigger_START = (!last_START) && curr_START;
+  trigger_SELECT = (!last_SELECT) && curr_SELECT;
+  trigger_UP = (!last_UP) && curr_UP;
+  trigger_RIGHT = (!last_RIGHT) && curr_RIGHT;
+  trigger_LEFT = (!last_LEFT) && curr_LEFT;
+  trigger_DOWN = (!last_DOWN) && curr_DOWN;
 
-    if (!rf69_manager.sendtoWait(cmddata, sizeof(cmddata), DEST_ADDRESS)) {
-      Serial.println("Sending failed (no ack)");
-    }
-  }
+  released_R = last_R && (!curr_R);
+  released_Y = last_Y && (!curr_Y);
+  released_START = last_START && (!curr_START);
+  released_SELECT = last_SELECT && (!curr_SELECT);
+  released_UP = last_UP && (!curr_UP);
+  released_RIGHT = last_RIGHT && (!curr_RIGHT);
+  released_LEFT = last_LEFT && (!curr_LEFT);
+  released_DOWN = last_DOWN && (!curr_DOWN);
+
+  // send Keyboard events
+  if(trigger_R) Keyboard.press(BTN_KEY_R);
+  if(trigger_Y) Keyboard.press(BTN_KEY_Y);
+  if(trigger_START) Keyboard.press(BTN_KEY_START);
+  if(trigger_SELECT) Keyboard.press(BTN_KEY_SELECT);
+  if(trigger_UP) Keyboard.press(BTN_KEY_UP);
+  if(trigger_DOWN) Keyboard.press(BTN_KEY_DOWN);
+  if(trigger_LEFT) Keyboard.press(BTN_KEY_LEFT);
+  if(trigger_RIGHT) Keyboard.press(BTN_KEY_RIGHT);
+
+  if(released_R) Keyboard.release(BTN_KEY_R);
+  if(released_Y) Keyboard.release(BTN_KEY_Y);
+  if(released_START) Keyboard.release(BTN_KEY_START);
+  if(released_SELECT) Keyboard.release(BTN_KEY_SELECT);
+  if(released_UP) Keyboard.release(BTN_KEY_UP);
+  if(released_DOWN) Keyboard.release(BTN_KEY_DOWN);
+  if(released_LEFT) Keyboard.release(BTN_KEY_LEFT);
+  if(released_RIGHT) Keyboard.release(BTN_KEY_RIGHT); 
+
+  // prepare next loop
+  last_R = curr_R;
+  last_Y = curr_Y;
+  last_START = curr_START;
+  last_SELECT = curr_SELECT;
+  last_UP = curr_UP;
+  last_DOWN = curr_DOWN;
+  last_LEFT = curr_LEFT;
+  last_RIGHT = curr_RIGHT;
+
   delay(MIN_DELAY);
 }
