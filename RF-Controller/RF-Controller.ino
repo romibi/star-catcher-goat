@@ -1,27 +1,14 @@
-#include <RCSwitch.h> // see https://github.com/sui77/rc-switch
-
-// =========
-// Constants
-// =========
-#define REPEAT_DELAY 1000
-#define MIN_DELAY 10
-#define SEND_REPEAT_FAST_COUNT 10
-
-#define SEND_BTNS_OFF_TIMES 10
-#define SEND_START_VALUE 604700672 // 0010 0100 0000 1011 00..
+#include <SPI.h>
+#include <RH_RF69.h>
+#include <RHReliableDatagram.h>
 
 // ====
 // PINS
 // ====
-//#define LED 13 // use LED_BUILTIN instead
-
-// Note: although i'm using a Feather 32u4 Radio with RFM69HCW Module, the RF Module libraries (RadioHead) seem to not be compatible
-// (See https://learn.adafruit.com/adafruit-feather-32u4-radio-with-rfm69hcw-module)
-// with the RF Receiver I'm using on the Raspberry PI. Therefore I'm using the RF Transmitter from the same package on Pin 12
-// (Same/Similar to https://www.instructables.com/RF-433-MHZ-Raspberry-Pi/ )
-#define RF_DATA_TX 12
-#define RF_PULSE_LENGTH 670
-#define RF_PROTOCOL 2
+#define RFM69_CS    8
+#define RFM69_INT   7
+#define RFM69_RST   4
+//#define LED        13 // use LED_BUILTIN instead
 
 #define BTN_R 5
 #define BTN_Y 6
@@ -33,6 +20,27 @@
 #define BTN_DOWN A5
 
 #define BUZZER 11
+
+// ============
+// Constants RF
+// ============
+#define RF69_FREQ 433.0
+
+// Who am i?
+#define MY_ADDRESS   2
+
+// Where to send packets to!
+#define DEST_ADDRESS 1
+
+// ===============
+// Constants Logic
+// ===============
+#define REPEAT_DELAY 1000
+#define MIN_DELAY 10
+#define SEND_REPEAT_FAST_COUNT 10
+
+#define SEND_BTNS_OFF_TIMES 10
+#define SEND_START_VALUE 604700672 // 0010 0100 0000 1011 00..
 
 // ================
 // Constants Melody
@@ -125,12 +133,13 @@ int chestTimings[] = {100, 100,   100,   100,      100, 100, 100,   100,      10
 // ====
 // Code
 // ====
-RCSwitch mySwitch = RCSwitch();
+// Singleton instance of the radio driver
+RH_RF69 rf69(RFM69_CS, RFM69_INT);
 
-// code by https://stackoverflow.com/a/47990
-inline int bit_set_to(int number, int n, bool x) {
-    return (number & ~((int)1 << n)) | ((int)x << n);
-}
+// Class to manage message delivery and receipt, using the driver declared above
+RHReliableDatagram rf69_manager(rf69, MY_ADDRESS);
+
+int16_t packetnum = 0;  // packet counter, we increment per xmission
 
 void playMelodyHandler(int &melodyPos, int &melodyLength, float* melodyNotes, int* melodyTimings, unsigned long &melodyLastNoteTime) {
   if(melodyPos<-1) return;
@@ -184,17 +193,11 @@ void playMelody(int melody) {
 
 void setup() {
   Serial.begin(9600);
-  
-  // Transmitter is connected to Arduino Pin #10  
-  mySwitch.enableTransmit(RF_DATA_TX);
-
-  // Optional set pulse length.
-  mySwitch.setPulseLength(RF_PULSE_LENGTH);
-  
-  // Optional set protocol (default is 1, will work for most outlets)
-  mySwitch.setProtocol(RF_PROTOCOL);  
 
   // setup pins
+  pinMode(RFM69_RST, OUTPUT);
+  digitalWrite(RFM69_RST, LOW);
+
   pinMode(LED_BUILTIN, OUTPUT);
 
   pinMode(BTN_R, INPUT_PULLUP);
@@ -207,11 +210,40 @@ void setup() {
   pinMode(BTN_DOWN, INPUT_PULLUP);
 
   pinMode(BUZZER, OUTPUT);
+
+  // rf init
+  // manual reset
+  digitalWrite(RFM69_RST, HIGH);
+  delay(10);
+  digitalWrite(RFM69_RST, LOW);
+  delay(10);
+
+  if (!rf69_manager.init()) {
+    Serial.println("RFM69 radio init failed");
+    while (1);
+  }
+  Serial.println("RFM69 radio init OK!");
+  // Defaults after init are 434.0MHz, modulation GFSK_Rb250Fd250, +13dbM (for low power module)
+  // No encryption
+  if (!rf69.setFrequency(RF69_FREQ)) {
+    Serial.println("setFrequency failed");
+  }
+
+  // If you are using a high power RF69 eg RFM69HW, you *must* set a Tx power with the
+  // ishighpowermodule flag set like this:
+  rf69.setTxPower(20, true);  // range from 14-20 for power, 2nd arg must be true for 69HCW
+
+  // The encryption key has to be the same as the one in the client
+  uint8_t key[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+                    0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
+  rf69.setEncryptionKey(key);
+
+  Serial.print("RFM69 radio @");  Serial.print((int)RF69_FREQ);  Serial.println(" MHz");
 }
 
-int sentDelay = REPEAT_DELAY+1;
-unsigned int sentValue = 65534;
-int sentCount = 0;
+// Dont put this on the stack:
+uint8_t buf[RH_RF69_MAX_MESSAGE_LEN];
+uint8_t data[] = "  OK";
 
 bool curr_R = false;
 bool curr_Y = false;
@@ -232,9 +264,44 @@ bool last_LEFT = false;
 bool last_DOWN = false;
 
 void loop() {
+  if (rf69_manager.available()) {
+    // Wait for a message addressed to us from the client
+    uint8_t len = sizeof(buf);
+    uint8_t from;
+    if (rf69_manager.recvfromAck(buf, &len, &from)) {
+      buf[len] = 0; // zero out remaining string
+
+      Serial.print("Got packet from #"); Serial.print(from);
+      Serial.print(" [RSSI :");
+      Serial.print(rf69.lastRssi());
+      Serial.print("] : ");
+      Serial.println((char*)buf);
+
+      String command = buf;
+      command.trim();
+
+      if (command.equals("play chest")) {
+        playMelody(MELODY_CHEST);
+      }
+      
+      if (command.equals("play point")) {
+        playMelody(MELODY_POINT);
+      }
+      
+      if (command.equals("play twinkle")) {
+        playMelody(MELODY_TWINKLE);
+      }
+      
+      if (command.equals("play fanfare")) {
+        playMelody(MELODY_FANFARE);
+      }
+    }
+  }
+
+  int radiopacketPointer = 0;
+  char radiopacket[20] = "";
+
   unsigned int value = 0;
-  unsigned int valueCorrection = 0;
-  unsigned long sendValue = 0;
   int button = false;
   int aButtonPressed = false;
 
@@ -249,18 +316,10 @@ void loop() {
   curr_DOWN = digitalRead(BTN_DOWN)==LOW;
   curr_LEFT = digitalRead(BTN_LEFT)==LOW;
   curr_RIGHT = digitalRead(BTN_RIGHT)==LOW;
-  
-  value = bit_set_to(value, 0, curr_R);
-  value = bit_set_to(value, 1, curr_Y);
-  value = bit_set_to(value, 2, curr_START);
-  value = bit_set_to(value, 3, curr_SELECT);
-  value = bit_set_to(value, 4, curr_UP);
-  value = bit_set_to(value, 5, curr_RIGHT);
-  value = bit_set_to(value, 6, curr_LEFT);
-  value = bit_set_to(value, 7, curr_DOWN);
-  
+
   if (curr_R) {
-    // do more stuff
+    radiopacket[radiopacketPointer] = 'R';
+    radiopacketPointer++;
 
     if(!last_R) {
       playMelody(MELODY_POINT);
@@ -269,7 +328,8 @@ void loop() {
   }
   
   if (curr_Y) {
-    // do more stuff
+    radiopacket[radiopacketPointer] = 'Y';
+    radiopacketPointer++;
 
     if(!last_Y) {
       playMelody(MELODY_TWINKLE);
@@ -278,7 +338,8 @@ void loop() {
   }
   
   if (curr_START) {
-    // do more stuff
+    radiopacket[radiopacketPointer] = 'S';
+    radiopacketPointer++;
 
     if(!last_START) {
       playMelody(MELODY_FANFARE);
@@ -287,7 +348,8 @@ void loop() {
   }
   
   if (curr_SELECT) {
-    // do more stuff
+    radiopacket[radiopacketPointer] = 's';
+    radiopacketPointer++;
 
     if(!last_SELECT) {
       playMelody(MELODY_CHEST);
@@ -296,7 +358,8 @@ void loop() {
   }
   
   if (curr_UP) {
-    // do more stuff
+    radiopacket[radiopacketPointer] = 'u';
+    radiopacketPointer++;
 
     if(!last_UP) {
       aButtonPressed = true;
@@ -304,7 +367,8 @@ void loop() {
   }
   
   if (curr_DOWN) {
-    // do more stuff
+    radiopacket[radiopacketPointer] = 'd';
+    radiopacketPointer++;
 
     if(!last_DOWN) {
       aButtonPressed = true;
@@ -312,7 +376,8 @@ void loop() {
   }
   
   if (curr_RIGHT) {
-    // do more stuff
+    radiopacket[radiopacketPointer] = 'r';
+    radiopacketPointer++;
     
     if(!last_RIGHT) {
       aButtonPressed = true;
@@ -320,7 +385,8 @@ void loop() {
   }
   
   if (curr_LEFT) {
-    // do more stuff
+    radiopacket[radiopacketPointer] = 'l';
+    radiopacketPointer++;
 
     if(!last_LEFT) {
       aButtonPressed = true;
@@ -331,61 +397,16 @@ void loop() {
     tone(BUZZER, 45, 50);
 
   // Check if we need to resend
-  if(value == sentValue) {
-    if(sentCount <= SEND_REPEAT_FAST_COUNT) {
-      sentCount++;
-    } else {
-      // value is unchanged and we sent it already a few times quickly, can wait longer now
-      sentDelay += MIN_DELAY;
-  
-      if(sentDelay < REPEAT_DELAY) {
-        // sent not long ago, wait and redo loop
-        
-        // Todo: remove duplicate lines
-        last_R = curr_R;
-        last_Y = curr_Y;
-        last_START = curr_START;
-        last_SELECT = curr_SELECT;
-        last_UP = curr_UP;
-        last_DOWN = curr_DOWN;
-        last_LEFT = curr_LEFT;
-        last_RIGHT = curr_RIGHT;
+  if(radiopacketPointer>0) {
+    // Status LED we will send
+    digitalWrite(LED_BUILTIN, HIGH);
 
-        delay(MIN_DELAY);
-        return;
-      }
+    Serial.print("Sending "); Serial.println(radiopacket);
+    // Send a message to the DESTINATION!
+    if (!rf69_manager.sendtoWait((uint8_t *)radiopacket, strlen(radiopacket), DEST_ADDRESS)) {
+      Serial.println("Sending failed (no ack)");
     }
-  } else {
-    sentCount = 0;
   }
-
-  // Status LED we will send
-  digitalWrite(LED_BUILTIN, HIGH);
-
-  // reset sent status values
-  sentDelay = 0;
-  sentValue = value;
-  
-  // Calculate Number to send (Magic starting number + error detection)
-  valueCorrection = ((~value)&255) << 8; // negate 8 bits and shift 8 to left
-  sendValue = SEND_START_VALUE + valueCorrection + value; // add together with normal value plus start value
-
-  // Serial debug out values
-  String printVal = String(value+256, BIN); // prevent leading zeros from beeing ommitted by adding 2^8 and replacing first char with a space
-  printVal[0] = ' ';
-  Serial.print("Button-Values:"+printVal);
-  Serial.print(" ->");
-  printVal = String(valueCorrection+65536, BIN); // prevent leading zeros from beeing ommitted by adding 2^16 and replacing first char with a space
-  printVal[0] = ' ';
-  Serial.print(printVal);
-  Serial.print(" -> ");
-  Serial.print(sendValue, BIN);
-  Serial.print(" -> ");
-  Serial.print(sendValue, DEC);
-  Serial.println("");
-
-  // Send IT
-  mySwitch.send(sendValue, 32);
 
   last_R = curr_R;
   last_Y = curr_Y;
@@ -396,6 +417,6 @@ void loop() {
   last_LEFT = curr_LEFT;
   last_RIGHT = curr_RIGHT;
 
-  delay(MIN_DELAY);  
+  delay(MIN_DELAY);
   digitalWrite(LED_BUILTIN, LOW);
 }
