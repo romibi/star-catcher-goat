@@ -32,7 +32,7 @@ except:
 
 print(f"Running game version {CURRENT_GAME_VERSION}")
 
-HUB_ADDR_STAR_1 = '192.168.1.107'
+HUB_ADDR_STAR_1 = '10.128.0.101'
 HUB_ADDR_STAR_2 = ''
 HUB_ADDR_STAR_3 = ''
 HUB_ADDR_STAR_4 = ''
