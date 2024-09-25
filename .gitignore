@@ -163,3 +163,4 @@ cython_debug/
 
 # Star Catcher Goat Specific stuff
 recordings/*
+documents/*
