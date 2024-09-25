@@ -22,7 +22,8 @@ if not pg.image.get_extended():
 CURRENT_GAME_VERSION = "(unknown)"
 
 def get_git_revision_hash() -> str:
-    return subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode('ascii').strip()
+    currdir = os.path.dirname(od.path.realpath(__file__))
+    return subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD'], cwd=currdir).decode('ascii').strip()
 
 try:
     CURRENT_GAME_VERSION = get_git_revision_hash()
