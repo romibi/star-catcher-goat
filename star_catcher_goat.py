@@ -5,14 +5,24 @@ import random
 from typing import List
 import pygame as pg
 from pygame import Rect
-import grequests
 from enum import Enum
-import threading
 import time
 import subprocess
 import pickle
 import serial
 import serial.tools.list_ports
+
+from config.gameconfig import GameConfig
+from config.gamevisualizationconfig import GameVisualizationConfig
+from config.buttonconfig import *
+
+from gamelib.gamestate import GameState
+from gamelib.ledhandler import LedHandler
+from gamelib.entities.star import Star
+from gamelib.entities.player import Player
+
+from gamelib.menus.menuscreen import MenuScreen
+from gamelib.uielements import *
 
 # see if we can load more than standard BMP
 if not pg.image.get_extended():
@@ -32,117 +42,11 @@ except:
 
 print(f"Running game version {CURRENT_GAME_VERSION}")
 
-HUB_ADDR_STAR_1 = '10.128.0.101'
-HUB_ADDR_STAR_2 = ''
-HUB_ADDR_STAR_3 = ''
-HUB_ADDR_STAR_4 = ''
-HUB_ADDR_STAR_5 = ''
-HUB_ADDR_STAR_6 = ''
-
-BUTTONS_MENU_CLOSE = [pg.K_ESCAPE]
-BUTTONS_MENU_OPEN = [pg.K_ESCAPE]
-
-BUTTONS_MENU_UP = [pg.K_UP]
-BUTTONS_MENU_DOWN = [pg.K_DOWN]
-BUTTONS_MENU_LEFT = [pg.K_LEFT]
-BUTTONS_MENU_RIGHT = [pg.K_RIGHT]
-
-BUTTONS_MENU_CONFIRM = [pg.K_RETURN]
-BUTTONS_MENU_DENY = [pg.K_SPACE]
-
-BUTTONS_MOVE_LEFT = [pg.K_LEFT]
-BUTTONS_MOVE_RIGHT = [pg.K_RIGHT, pg.K_RETURN]
-BUTTONS_JUMP = [pg.K_UP, pg.K_SPACE]
-
-SERIAL_BUTTON_R = pg.K_RETURN
-SERIAL_BUTTON_Y = pg.K_SPACE
-SERIAL_BUTTON_START = pg.K_ESCAPE
-SERIAL_BUTTON_SELECT = pg.K_BACKSPACE # unused?
-SERIAL_BUTTON_UP = pg.K_UP
-SERIAL_BUTTON_DOWN = pg.K_DOWN
-SERIAL_BUTTON_LEFT = pg.K_LEFT
-SERIAL_BUTTON_RIGHT = pg.K_RIGHT
-
-
 main_dir = os.path.split(os.path.abspath(__file__))[0]
 
-class GameConfig():
-
-    def __init__(self):
-        self.reset()
-
-    def reset(self):
-        # difficulty settings
-        self.STAR_BASE_LIKELYHOOD = 0.3 # at start 30% chance of 1 star. (15% for 2nd star)
-        self.STAR_MAX_LIKELYHOOD = 0.95 # max chance of 95% for 1 star (47.5% for 2nd star)
-        self.STAR_TIMER_LIKELYHOOD = 0.0005 # star spawn likely hood increase over time
-        self.FORCE_STAR_SPAWN_MIN = 2 # if 2 or less stars 1 star spawns 100%
-        self.MAX_STARS = 2 # max stars per row
-
-        # speed
-        self.FRAME_RATE = 10; # fps
-        self.STAR_MOVE_RATE = 10; # stars move every x frames
-
-        # game end
-        self.STAR_STOP_SPAWN_FRAMECOUNT = 1120; # no more stars after 112 seconds
-        self.END_FRAMECOUNT = 1200; # stop game loop after 120 seconds
-
-        # how many stars? 3x6 or 6x6
-        self.ROWS = 6;
-        self.COLUMNS = 6; # code works with 3 or 6 columns
-
-
-class GameVisualizationConfig():
-    # vizPos für 3 columns
-    vizRects3 = [
-       [ Rect(84,  72, 32, 32),                                                 Rect(372,  72, 32, 32), Rect(552,  72, 32, 32)                        ],
-       [                        Rect(138, 108, 32, 32), Rect(318, 108, 32, 32),                                                 Rect(606, 108, 32, 32)],
-       [ Rect(84, 144, 32, 32),                                                 Rect(372, 144, 32, 32), Rect(552, 144, 32, 32)                        ],
-
-       [                        Rect(138, 288, 32, 32),                         Rect(372, 288, 32, 32),                         Rect(606, 288, 32, 32)],
-       [ Rect(84, 324, 32, 32),                         Rect(318, 324, 32, 32),                         Rect(552, 324, 32, 32)                        ],
-       [                        Rect(138, 360, 32, 32),                         Rect(372, 360, 32, 32),                         Rect(606, 360, 32, 32)]
-    ]
-
-    # vizPos für 6 columns
-    vizRects6 = [
-       [ Rect(84,  72, 32, 32), Rect(138,  72, 32, 32), Rect(318,  72, 32, 32), Rect(372,  72, 32, 32), Rect(552,  72, 32, 32), Rect(606,  72, 32, 32)],
-       [ Rect(84, 108, 32, 32), Rect(138, 108, 32, 32), Rect(318, 108, 32, 32), Rect(372, 108, 32, 32), Rect(552, 108, 32, 32), Rect(606, 108, 32, 32)],
-       [ Rect(84, 144, 32, 32), Rect(138, 144, 32, 32), Rect(318, 144, 32, 32), Rect(372, 144, 32, 32), Rect(552, 144, 32, 32), Rect(606, 144, 32, 32)],
-
-       [ Rect(84, 288, 32, 32), Rect(138, 288, 32, 32), Rect(318, 288, 32, 32), Rect(372, 288, 32, 32), Rect(552, 288, 32, 32), Rect(606, 288, 32, 32)],
-       [ Rect(84, 324, 32, 32), Rect(138, 324, 32, 32), Rect(318, 324, 32, 32), Rect(372, 324, 32, 32), Rect(552, 324, 32, 32), Rect(606, 324, 32, 32)],
-       [ Rect(84, 360, 32, 32), Rect(138, 360, 32, 32), Rect(318, 360, 32, 32), Rect(372, 360, 32, 32), Rect(552, 360, 32, 32), Rect(606, 360, 32, 32)]
-    ]
-
-    vizGoatRects = [ Rect(84, 540, 64, 64), Rect(110, 540, 64, 64), Rect(318, 540, 64, 64), Rect(344, 540, 64, 64), Rect(552, 540, 64, 64), Rect(578, 540, 64, 64)]
-
-    vizRects = None # initialized in setup/reset
-
-
-class GameState():
-    SCREENRECT = pg.Rect(0, 0, 1280, 720)
-
-    CURRENT_MENU = None
-    MENU_JUST_CLOSED = False
-    GAME_QUIT = False
-
-    REPLAY = False
-
-    FRAME_COUNT = 0
-    StarsMissed = 0
-
-    CONTROLLER_COM_ADDR = ''
-    CONTROLLER_COM = None
-
-    CONTROLLER_PLAY_CATCH_SOUND = False
-
-    LAST_SERIAL_BUTTONS = []
-
-
 GAME_CONFIG = GameConfig()
-GAME_STATE = GameState()
 GAME_VIZ_CONF = GameVisualizationConfig()
+GAME_STATE = GameState(GAME_CONFIG, GAME_VIZ_CONF)
 
 RECORDING = None
 
@@ -266,177 +170,6 @@ def load_sound(file):
     return None
 
 
-class LedHandler():
-    STAR_COLOR = 'FF9000'
-    BRIGHTNESS_MOD = 0 # modifying 0=ALL, 1=A, 2=B, 3=G
-    STAR_BRIGHTNESS_A = 255 # row 0-2
-    STAR_BRIGHTNESS_B = 255 # row 3-5
-    GOAT_BRIGHTNESS = 255
-
-    # change color of segment 1 (0) to green: http://192.168.1.107/win&SM=0&SB=255&CL=H00FF00
-    API_ADDR = '/win'
-    API_ARG_SEGMENT = '&SM='
-    API_ARG_BRIGHTNES = '&SB='
-    API_ARG_COLOR = '&CL=H'
-
-
-    # Segment map for when only halve the stars are wired:
-    #ledSegmentMap3 = [
-    #   [ {"hub": 1, "segment": 2},                                                     {"hub": 2, "segment": 2}, {"hub": 3, "segment": 2}                          ],
-    #   [                           {"hub": 1, "segment": 1}, {"hub": 2, "segment": 1},                                                     {"hub": 3, "segment": 1}],
-    #   [ {"hub": 1, "segment": 0},                                                     {"hub": 2, "segment": 0}, {"hub": 3, "segment": 0}                          ],
-    #
-    #   [                           {"hub": 4, "segment": 2},                           {"hub": 5, "segment": 2},                           {"hub": 6, "segment": 2}],
-    #   [ {"hub": 4, "segment": 1},                           {"hub": 5, "segment": 1},                           {"hub": 6, "segment": 1},                         ],
-    #   [                           {"hub": 4, "segment": 0},                           {"hub": 5, "segment": 0},                           {"hub": 6, "segment": 0}]
-    #]
-
-    # Segment map for when 6x6 stars are wired but game is in 3x6 mode:
-    ledSegmentMap3 = [
-       [ {"hub": 1, "segment": 2},                                                     {"hub": 2, "segment": 3}, {"hub": 3, "segment": 2}                          ],
-       [                           {"hub": 1, "segment": 4}, {"hub": 2, "segment": 1},                                                     {"hub": 3, "segment": 4}],
-       [ {"hub": 1, "segment": 0},                                                     {"hub": 2, "segment": 5}, {"hub": 3, "segment": 0}                          ],
-
-       [                           {"hub": 4, "segment": 3},                           {"hub": 5, "segment": 3},                           {"hub": 6, "segment": 3}],
-       [ {"hub": 4, "segment": 1},                           {"hub": 5, "segment": 1},                           {"hub": 6, "segment": 1},                         ],
-       [                           {"hub": 4, "segment": 5},                           {"hub": 5, "segment": 5},                           {"hub": 6, "segment": 5}]
-    ]
-
-    ledSegmentMap6 = [
-       [ {"hub": 1, "segment": 2}, {"hub": 1, "segment": 3}, {"hub": 2, "segment": 2}, {"hub": 2, "segment": 3}, {"hub": 3, "segment": 2}, {"hub": 3, "segment": 3}],
-       [ {"hub": 1, "segment": 1}, {"hub": 1, "segment": 4}, {"hub": 2, "segment": 1}, {"hub": 2, "segment": 4}, {"hub": 3, "segment": 1}, {"hub": 3, "segment": 4}],
-       [ {"hub": 1, "segment": 0}, {"hub": 1, "segment": 5}, {"hub": 2, "segment": 0}, {"hub": 2, "segment": 5}, {"hub": 3, "segment": 0}, {"hub": 3, "segment": 5}],
-
-       [ {"hub": 4, "segment": 2}, {"hub": 4, "segment": 3}, {"hub": 5, "segment": 2}, {"hub": 5, "segment": 3}, {"hub": 6, "segment": 2}, {"hub": 6, "segment": 3}],
-       [ {"hub": 4, "segment": 1}, {"hub": 4, "segment": 4}, {"hub": 5, "segment": 1}, {"hub": 5, "segment": 4}, {"hub": 6, "segment": 1}, {"hub": 6, "segment": 4}],
-       [ {"hub": 4, "segment": 0}, {"hub": 4, "segment": 5}, {"hub": 5, "segment": 0}, {"hub": 5, "segment": 5}, {"hub": 6, "segment": 0}, {"hub": 6, "segment": 5}]
-    ]
-
-    ledSegmentMap = None # initialized in setup/reset
-
-    hubs = {}
-    stars = {}
-    leds = {}
-
-    def __init__(self):
-        self.active = -1 # 0: no, 1: yes, -1: active unless first request fails
-        self.reset()
-
-
-    def reset(self):
-        self.hubs = {}
-        self.stars = {}
-        self.leds = {}
-
-        if HUB_ADDR_STAR_1 != '':
-            self.AddStarHub(1, HUB_ADDR_STAR_1)
-        if HUB_ADDR_STAR_2 != '':
-            self.AddStarHub(2, HUB_ADDR_STAR_2)
-        if HUB_ADDR_STAR_3 != '':
-            self.AddStarHub(3, HUB_ADDR_STAR_3)
-        if HUB_ADDR_STAR_4 != '':
-            self.AddStarHub(4, HUB_ADDR_STAR_4)
-        if HUB_ADDR_STAR_5 != '':
-            self.AddStarHub(5, HUB_ADDR_STAR_5)
-        if HUB_ADDR_STAR_6 != '':
-            self.AddStarHub(6, HUB_ADDR_STAR_6)
-
-        for row in range(GAME_CONFIG.ROWS):
-            self.stars[row] = {}
-            self.leds[row] = {}
-            for column in range(GAME_CONFIG.COLUMNS):
-                self.stars[row][column] = {}
-                self.leds[row][column] = {}
-
-
-
-    def AddStarHub(self, num, address):
-        self.hubs[num] = address
-
-
-    def GetStarHub(self, row, column):
-        if self.ledSegmentMap:
-            segment = self.ledSegmentMap[row][column]
-            hub = segment["hub"]
-            return self.hubs.get(hub, None)
-        return ''
-
-
-    def GetLedApiUrl(self, row, column, bright, color):
-        hub = self.GetStarHub(row, column);
-        if not hub:
-            return None;
-  
-        segment = self.ledSegmentMap[row][column];
-
-        return f'http://{hub}{self.API_ADDR}{self.API_ARG_SEGMENT}{segment["segment"]}{self.API_ARG_BRIGHTNES}{bright}{self.API_ARG_COLOR}{color}'
-
-
-    def SetStarLed(self, row, column, bright, color=None):
-        self.stars[row][column]['bright'] = bright
-        if not 'color' in self.stars[row][column]:
-            self.stars[row][column]['color'] = self.STAR_COLOR
-        if color:
-            self.stars[row][column]['color'] = color
-
-
-    def SetAllLedsOff(self):
-        for row, starRow in self.stars.items():
-            for column, star in starRow.items():
-                self.SetStarLed(row, column, 0)
-
-
-    def UpdateBrightness(self, newBrightnessA, newBrightnessB, newBrightnessG):
-        for row, starRow in self.stars.items():
-            for column, star in starRow.items():
-                if star.get('bright', 0) > 0:
-                    if row > 2:
-                        star['bright'] = newBrightnessB
-                    else:
-                        star['bright'] = newBrightnessA
-
-
-    def UpdateLeds(self):
-        urls = []
-        for row, starRow in self.stars.items():
-            for column, star in starRow.items():
-                led = self.leds[row][column]
-
-                starBrigth = star.get('bright', 0)
-                ledBrigth = led.get('bright', None)
-
-                starColor = star.get('color', self.STAR_COLOR)
-                ledColor = star.get('color', None)
-
-                if (starBrigth == ledBrigth) and (starColor == ledColor):
-                    continue
-
-                self.leds[row][column]['bright'] = starBrigth
-                self.leds[row][column]['color'] = starColor
-
-                apiUrl = self.GetLedApiUrl(row, column, starBrigth, starColor)
-                if not apiUrl:
-                    continue
-
-                urls += [apiUrl]
-                #print(f"Adding url for star row: {row} column: {column} to request: {apiUrl}")
-        
-        rs = (grequests.get(u, timeout=5) for u in urls)
-
-        def call_map(rs, exception_handler):
-            grequests.map(rs, exception_handler=exception_handler)
-
-        if self.active == 0:
-            return
-        elif self.active == -1:
-            self.active = 1
-            def exception_handler(request, exception):
-                self.active = 0            
-            threading.Thread(target=call_map, args=(rs,exception_handler)).start()
-        else:
-            threading.Thread(target=call_map, args=(rs,None)).start()
-
-
 def ResetGame(newColumns, player, stars, screen, leds, clear_recording=True):
     # Shutdown LEDS
     leds.SetAllLedsOff()
@@ -481,339 +214,6 @@ def replay(recording, player, stars, screen, leds):
     random.seed(RECORDING["seed"])
 
 
-class Star(pg.sprite.Sprite):
-
-    gridPosX = 0
-    gridPosY = 0
-    images: List[pg.Surface] = []
-
-
-    def __init__(self, column, *groups):
-        pg.sprite.Sprite.__init__(self, *groups)
-        self.image = self.images[0]
-        self.gridPosX = column
-        self.gridPosY = -1
-        self.rect = GAME_VIZ_CONF.vizRects[self.gridPosY+1][self.gridPosX]
-        self.facing = 0
-        self.frame = 0
-
-    @property
-    def hangingLow(self):
-        return self.gridPosY>=(GAME_CONFIG.ROWS-1)
-
-    def fall(self):
-        self.gridPosY += 1
-        if self.gridPosY < GAME_CONFIG.ROWS:
-            self.rect = GAME_VIZ_CONF.vizRects[self.gridPosY][self.gridPosX]
-        else:
-            self.land()
-
-
-    def land(self, player=None):
-        if self.frame % GAME_CONFIG.STAR_MOVE_RATE != 0:
-            return
-
-        catched = False
-        if not player == None:
-            catched = player.CatchStarPassive(self)
-        if not catched:
-            GAME_STATE.StarsMissed += 1
-        self.kill()
-
-
-    def update(self, *args, **kwargs):
-        #self.rect.move_ip(self.facing, 1)
-        if self.frame % GAME_CONFIG.STAR_MOVE_RATE == 0:
-            self.fall()
-
-        if not GAME_STATE.SCREENRECT.contains(self.rect):
-            self.facing = -self.facing
-            self.rect.top = self.rect.bottom + 1
-            self.rect = self.rect.clamp(GAME_STATE.SCREENRECT)
-        self.frame = self.frame + 1
-
-
-class Player(pg.sprite.Sprite):
-
-    images: List[pg.Surface] = []
-    gridPos = 0
-    hornGlowIntensity = 0
-    bodyGlowIntensity = 0
-    starsCatchedHorn = 0
-    starsCatchedButt = 0
-
-    def __init__(self, *groups):
-        pg.sprite.Sprite.__init__(self, *groups)
-        self.image = self.images[0]
-        self.gridPos = 1
-        self.facing = -1
-        self.rect = Rect(0,0,0,0)
-        self.reloading = 0
-        self.origtop = self.rect.top
-        self.updateImage()
-        self.updateRect()
-
-    def reset(self):
-        self.starsCatchedHorn = 0
-        self.starsCatchedButt = 0
-        self.facing = -1
-        self.gridPos = 1
-        self.updateImage()
-        self.updateRect()
-
-
-    def updateImage(self):
-        if self.facing < 0:
-            if self.HornGlowing and self.BodyGlowing:
-                self.image = self.images[6]
-            elif self.HornGlowing:
-                self.image = self.images[2]
-            elif self.BodyGlowing:
-                self.image = self.images[4]
-            else:
-                self.image = self.images[0]
-        elif self.facing > 0:
-            if self.HornGlowing and self.BodyGlowing:
-                self.image = self.images[7]
-            elif self.HornGlowing:
-                self.image = self.images[3]
-            elif self.BodyGlowing:
-                self.image = self.images[5]
-            else:
-                self.image = self.images[1]
-
-    def updateRect(self):
-        self.rect = GAME_VIZ_CONF.vizGoatRects[int(self.gridPos*2)+max(self.facing,0)]
-
-    def moveInGrid(self):        
-        maxGoatPos = round(GAME_CONFIG.COLUMNS/2)-1
-        if GAME_CONFIG.COLUMNS == 3:
-            maxGoatPos = 2
-
-        if self.facing < 0:
-            self.gridPos = max(self.gridPos-1,0)
-        elif self.facing > 0:
-            self.gridPos = min(self.gridPos+1,maxGoatPos)
-
-
-    def update(self):
-        self.hornGlowIntensity = max(self.hornGlowIntensity-1,0)
-        self.bodyGlowIntensity = max(self.bodyGlowIntensity-1,0)
-        self.updateImage()
-
-
-    def move(self, direction):
-        if direction == 0:
-            return
-
-        turned = (self.facing != direction)
-        self.facing = direction
-
-        if (not turned) or (GAME_CONFIG.COLUMNS == 3):
-            self.moveInGrid()        
-
-        #print(f"gridPos: {self.gridPos}, facing: {self.facing}")
-
-        self.updateImage()
-        self.updateRect()
-
-
-    def cursorMove(self, rect):
-        self.rect = rect
-
-
-    def HornGlow(self):
-        self.hornGlowIntensity = 20
-        self.updateImage()
-
-
-    def BodyGlow(self):
-        self.bodyGlowIntensity = 20
-        self.updateImage()
-
-
-    @property
-    def HornGlowing(self):
-        return self.hornGlowIntensity>0
-
-
-    @property
-    def BodyGlowing(self):
-        return self.bodyGlowIntensity>0
-
-    @property
-    def HornColumn(self):
-        if GAME_CONFIG.COLUMNS == 3:
-            return self.gridPos
-        return self.gridPos * 2 + max(self.facing,0)
-
-
-    @property
-    def ButtColumn(self):
-        if GAME_CONFIG.COLUMNS == 3:
-            return -1 # no butt column
-        return self.gridPos*2 + (1-max(self.facing,0))
-
-
-    def jump(self, stars):
-        for star in stars:
-            if star.gridPosX == self.HornColumn:
-                self.starsCatchedHorn += 1
-                self.HornGlow()
-                if GAME_STATE.CONTROLLER_PLAY_CATCH_SOUND:
-                    triggerControllerSound("twinkle"); # note: blocks receiving controller data
-                #print(f"Catching Star: x:{star.gridPosX} y:{star.gridPosX}")
-                star.kill()
-        return
-
-    def CatchStarPassive(self, star):
-        if star.gridPosX == self.HornColumn:
-            self.starsCatchedHorn += 1
-            self.HornGlow()
-            if GAME_STATE.CONTROLLER_PLAY_CATCH_SOUND:
-                triggerControllerSound("point") # note: blocks receiving controller data
-            return True
-        elif star.gridPosX == self.ButtColumn:
-            self.starsCatchedButt += 1
-            self.BodyGlow()
-            if GAME_STATE.CONTROLLER_PLAY_CATCH_SOUND:
-                triggerControllerSound("point") # note: blocks recevingin controller data
-            return True
-        return False
-
-
-class UiText(pg.sprite.Sprite):
-    ""
-    text = ""
-
-    def __init__(self, *groups):
-        pg.sprite.Sprite.__init__(self, *groups)
-        self.font = pg.font.Font(None, 48)
-        #self.font.set_italic(1)
-        self.color = "white"
-        self.lastText = None
-        self.lastTargetRect = None
-        self.textFunc = None
-        self.targetRect = Rect(0,0,0,0)
-        self.align = -1 # -1 left, 0 center, 1 right
-        self.update()
-        self.rect = self.image.get_rect().move(10, 450)
-
-
-    def update(self, *args, **kwargs):
-        """We only update the score in update() when it has changed."""
-        if self.textFunc:
-            self.text = self.textFunc()
-
-        if (self.text != self.lastText) or (self.targetRect != self.lastTargetRect):
-            self.lastText = self.text
-            self.lastTargetRect = self.targetRect
-            img = self.font.render(self.text, 0, self.color)
-            self.image = img
-
-            self.rect = self.targetRect.copy()
-            if self.align == 0:
-                self.rect.left = self.rect.left + ((self.targetRect.width - img.get_rect().width) / 2)
-            elif self.align == 1:
-                self.rect.left = self.rect.left + ((self.targetRect.width - img.get_rect().width))
-
-
-class ButtonIcon(pg.sprite.Sprite):
-
-    animcycle = 24
-    images: List[pg.Surface] = []
-    paused = False
-
-    def __init__(self, x, y, images, *groups):
-        pg.sprite.Sprite.__init__(self, *groups)
-        self.images = images
-        self.image = self.images[0]
-        self.rect = self.image.get_rect()
-        self.rect.left = x
-        self.rect.top = y
-        self.frame = 0
-
-    def update(self, *args, **kwargs):
-        if self.paused:
-            self.image = self.images[0]
-            return
-
-        self.frame = self.frame + 1
-        self.image = self.images[self.frame // self.animcycle % 2]
-
-
-class MenuScreen():
-    def __init__(self, screen, menuOptionMap):
-        self.screen = screen
-        self.background = screen.copy()
-        self.sprites = pg.sprite.RenderUpdates()
-        self.cursor = UiText(self.sprites)
-        self.cursor.text = ">"
-        self.cursor.targetRect = Rect(50, 100, 64, 64)
-        self.menuOptionMap = menuOptionMap
-        self.cursorIndex = 0
-
-        nextPos = 100
-        for menuEntry in menuOptionMap.keys():
-            entry = UiText(self.sprites);
-            if type(menuEntry) == str:
-                entry.text = menuEntry
-            elif callable(menuEntry):
-                entry.textFunc = menuEntry
-            entry.targetRect = Rect(100, nextPos, 300, 300)
-            nextPos += 50
-
-        self.frame = -1
-
-        overlayBg = pg.Surface(GAME_STATE.SCREENRECT.size, pg.SRCALPHA,32)
-        overlayBg.fill((0,0,0, 150))
-        self.background.blit(overlayBg, (0, 0))
-
-
-    def Loop(self, serial_keys):
-        def handleKey(key):
-            if key in BUTTONS_MENU_CLOSE:
-                CloseMenu(key)
-                return True
-            if key in BUTTONS_MENU_DOWN:
-                self.cursorIndex = min(self.cursorIndex+1, len(self.menuOptionMap.keys())-1)
-                self.cursor.targetRect = Rect(50, 100+(self.cursorIndex*50), 64, 64)
-            if key in BUTTONS_MENU_UP:
-                self.cursorIndex = max(self.cursorIndex-1, 0)
-                self.cursor.targetRect = Rect(50, 100+(self.cursorIndex*50), 64, 64)
-            if key in BUTTONS_MENU_CONFIRM + BUTTONS_MENU_LEFT + BUTTONS_MENU_RIGHT + BUTTONS_MENU_DENY:
-                menuFuncs = list(self.menuOptionMap.values())
-                menuFuncs[self.cursorIndex](key)
-            return False
-
-        self.frame += 1
-        for event in pg.event.get():
-            if event.type == pg.QUIT:
-                GAME_STATE.GAME_QUIT = True
-                return
-            if event.type == pg.KEYDOWN:
-                if handleKey(event.key):
-                    return
-
-        for key in serial_keys:
-            if handleKey(key):
-                return
-
-        if self.frame == 0:
-            self.screen.blit(self.background, (0, 0))
-
-        self.sprites.clear(self.screen, self.background)
-
-        self.sprites.update()
-
-        # draw the scene
-        if self.frame == 0:
-            pg.display.flip()
-        
-        dirty = self.sprites.draw(self.screen)
-        pg.display.update(dirty)
-
-
 def spawnNewStarRow(stars, stargroups):
     if(GAME_STATE.FRAME_COUNT>GAME_CONFIG.STAR_STOP_SPAWN_FRAMECOUNT):
         return
@@ -839,7 +239,7 @@ def spawnNewStarRow(stars, stargroups):
         if spawnStar:
             spawnColumn = random.randint(0, GAME_CONFIG.COLUMNS-1);
             #print(f"Spawning at {spawnColumn}")
-            Star(spawnColumn, stargroups)
+            Star(GAME_STATE, spawnColumn, stargroups)
 
 
 def triggerControllerSound(name):
@@ -945,7 +345,7 @@ def main(winstyle=0):
     gameSprites = pg.sprite.RenderUpdates()
 
     # initialize our starting sprites
-    player = Player(gameSprites)
+    player = Player(GAME_STATE, gameSprites)
 
     # right/left buttons
     ButtonIcon(810, 330, [load_image(im) for im in ("button_blue_left.png", "button_blue_left_pressed.png")], (gameButtons, gameSprites)).frame = 24 # offset button animations a bit
@@ -955,7 +355,7 @@ def main(winstyle=0):
     ButtonIcon(750, 620, [load_image(im) for im in ("button_black_right.png", "button_black_right_pressed.png")], (endButtons, gameSprites)).frame = 24
     ButtonIcon(750, 670, [load_image(im) for im in ("button_black_left.png", "button_black_left_pressed.png")], (endButtons, gameSprites))
 
-    leds = LedHandler();
+    leds = LedHandler(GAME_CONFIG);
 
     if pg.font:
         scoreText = UiText(gameSprites)
@@ -1192,7 +592,7 @@ def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButto
     # get input
     def handleKey(key):
         if key in BUTTONS_MENU_OPEN:
-            GAME_STATE.CURRENT_MENU = MenuScreen(screen, {"Zurück zum Spiel": CloseMenu, LedText: ToggleLedActive, LedBrightText: LedBright, ControllerText: ControllerAction, ControllerSoundText: ToggleControllerSound, "Neues Spiel (Normal)": Reset6, "Neues Spiel (Einfach)": Reset3, "Spiel Beenden": QuitGame})
+            GAME_STATE.CURRENT_MENU = MenuScreen(GAME_STATE, screen, {"Zurück zum Spiel": CloseMenu, LedText: ToggleLedActive, LedBrightText: LedBright, ControllerText: ControllerAction, ControllerSoundText: ToggleControllerSound, "Neues Spiel (Normal)": Reset6, "Neues Spiel (Einfach)": Reset3, "Spiel Beenden": QuitGame})
             return True
         if key == pg.K_PAGEUP:
             Reset6(key)
