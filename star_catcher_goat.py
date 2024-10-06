@@ -10,7 +10,6 @@ import time
 import subprocess
 import pickle
 import serial
-import serial.tools.list_ports
 
 from config.gameconfig import GameConfig
 from config.gamevisualizationconfig import GameVisualizationConfig
@@ -21,6 +20,7 @@ from gamelib.ledhandler import LedHandler
 from gamelib.entities.star import Star
 from gamelib.entities.player import Player
 
+from gamelib.menus.menufactory import MenuFactory
 from gamelib.menus.menuscreen import MenuScreen
 from gamelib.uielements import *
 
@@ -47,6 +47,8 @@ main_dir = os.path.split(os.path.abspath(__file__))[0]
 GAME_CONFIG = GameConfig()
 GAME_VIZ_CONF = GameVisualizationConfig()
 GAME_STATE = GameState(GAME_CONFIG, GAME_VIZ_CONF)
+
+MENU_FACTORY = None
 
 RECORDING = None
 
@@ -287,16 +289,6 @@ def GetButtonsFromSerial():
                     result += [SERIAL_BUTTON_RIGHT]
     return result
 
-
-def CloseMenu(key):
-    GAME_STATE.CURRENT_MENU = False
-    GAME_STATE.MENU_JUST_CLOSED = True
-
-
-def QuitGame(key):
-    GAME_STATE.GAME_QUIT = True
-
-
 def main(winstyle=0):
     # Initialize pygame
     if pg.get_sdl_version()[0] == 2:
@@ -355,7 +347,14 @@ def main(winstyle=0):
     ButtonIcon(750, 620, [load_image(im) for im in ("button_black_right.png", "button_black_right_pressed.png")], (endButtons, gameSprites)).frame = 24
     ButtonIcon(750, 670, [load_image(im) for im in ("button_black_left.png", "button_black_left_pressed.png")], (endButtons, gameSprites))
 
-    leds = LedHandler(GAME_CONFIG);
+    leds = LedHandler(GAME_CONFIG)
+    GAME_STATE.LED_HANDLER = leds
+
+    def ResetNum(num):
+        ResetGame(num, player, stars, screen, GAME_STATE.LED_HANDLER)
+    global MENU_FACTORY
+    MENU_FACTORY = MenuFactory(GAME_STATE, screen, ResetNum)
+
 
     if pg.font:
         scoreText = UiText(gameSprites)
@@ -382,7 +381,7 @@ def main(winstyle=0):
             GAME_STATE.CONTROLLER_COM = None
 
     # reset before first loop to have same random starting condition as in replay
-    ResetGame(6, player, stars, screen, leds)
+    ResetGame(6, player, stars, screen, GAME_STATE.LED_HANDLER)
 
     # Run our main loop whilst the player is alive.
     while player.alive() and not GAME_STATE.GAME_QUIT:
@@ -403,7 +402,7 @@ def main(winstyle=0):
         else:
             # todo: move scoreText, statText, statMissedText, gameButtons, endButtons and background to some GUI class/object contained in GAME_STATE
             # todo: move player, stars, leds,, gameSpprites, screen and background to GAME_STATE
-            PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButtons, endButtons, gameSprites, screen, background, serial_keys)
+            PlayLoop(player, scoreText, statText, statMissedText, stars, gameButtons, endButtons, gameSprites, screen, background, serial_keys)
             GAME_STATE.MENU_JUST_CLOSED = False
 
         # cap the framerate at 10fps. Also called 10HZ or 10 times per second.
@@ -435,164 +434,13 @@ def ReRenderBackground(screen):
     screen.blit(background, (0, 0))
 
 
-def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButtons, endButtons, gameSprites, screen, background, serial_keys):
+def PlayLoop(player, scoreText, statText, statMissedText, stars, gameButtons, endButtons, gameSprites, screen, background, serial_keys):
     GAME_STATE.FRAME_COUNT += 1
-
-    # todo: move menu definition outside play loop
-    def Reset6(key):
-        CloseMenu(key)
-        ResetGame(6, player, stars, screen, leds)
-
-    def Reset3(key):
-        CloseMenu(key)
-        ResetGame(3, player, stars, screen, leds)
-
-    def LedText():
-        if leds.active == 1:
-            return "LED Ein/Aus: EIN"
-        else:
-            return "LED Ein/Aus: AUS"
-
-    def ToggleLedActive(key):
-        if leds.active == 1:
-            leds.SetAllLedsOff()
-            leds.UpdateLeds()
-            leds.active = 0
-        else:
-            leds.active = 1
-
-    def LedBrightText():
-        if (leds.BRIGHTNESS_MOD != 0) or (leds.STAR_BRIGHTNESS_A != leds.STAR_BRIGHTNESS_B) or (leds.STAR_BRIGHTNESS_A != leds.GOAT_BRIGHTNESS) or (leds.STAR_BRIGHTNESS_B != leds.GOAT_BRIGHTNESS):
-            if leds.BRIGHTNESS_MOD == 0:
-                return f"LED Helligkeit: [{leds.STAR_BRIGHTNESS_A}|{leds.STAR_BRIGHTNESS_B}|{leds.GOAT_BRIGHTNESS}]"
-            elif leds.BRIGHTNESS_MOD == 1:
-                return f"LED Helligkeit: [{leds.STAR_BRIGHTNESS_A}]|{leds.STAR_BRIGHTNESS_B}|{leds.GOAT_BRIGHTNESS}"
-            elif leds.BRIGHTNESS_MOD == 2:
-                return f"LED Helligkeit: {leds.STAR_BRIGHTNESS_A}|[{leds.STAR_BRIGHTNESS_B}]|{leds.GOAT_BRIGHTNESS}"
-            elif leds.BRIGHTNESS_MOD == 3:
-                return f"LED Helligkeit: {leds.STAR_BRIGHTNESS_A}|{leds.STAR_BRIGHTNESS_B}|[{leds.GOAT_BRIGHTNESS}]"
-        else:
-            return f"LED Helligkeit: {leds.STAR_BRIGHTNESS_A}"
-
-    def LedBright(key):
-        modifiers = pg.key.get_mods()
-
-        if ((key == pg.K_RETURN) and (modifiers & pg.KMOD_LSHIFT)) or (key in BUTTONS_MENU_DENY):
-            leds.BRIGHTNESS_MOD += 1
-            if leds.BRIGHTNESS_MOD>3:
-                leds.BRIGHTNESS_MOD = 0
-            return
-
-        modVal = 10
-        if modifiers & pg.KMOD_LSHIFT:
-            modVal = 1
-        elif modifiers & pg.KMOD_LCTRL:
-            modVal = 50
-
-        if key in BUTTONS_MENU_LEFT:
-            if leds.BRIGHTNESS_MOD == 0 or leds.BRIGHTNESS_MOD == 1:
-                leds.STAR_BRIGHTNESS_A = max(leds.STAR_BRIGHTNESS_A-modVal, 1)
-            if leds.BRIGHTNESS_MOD == 0 or leds.BRIGHTNESS_MOD == 2:
-                leds.STAR_BRIGHTNESS_B = max(leds.STAR_BRIGHTNESS_B-modVal, 1)
-            if leds.BRIGHTNESS_MOD == 0 or leds.BRIGHTNESS_MOD == 3:
-                leds.GOAT_BRIGHTNESS = max(leds.GOAT_BRIGHTNESS-modVal, 1)
-        if key in BUTTONS_MENU_RIGHT:
-            if leds.BRIGHTNESS_MOD == 0 or leds.BRIGHTNESS_MOD == 1:
-                leds.STAR_BRIGHTNESS_A = min(leds.STAR_BRIGHTNESS_A+modVal, 255)
-            if leds.BRIGHTNESS_MOD == 0 or leds.BRIGHTNESS_MOD == 2:
-                leds.STAR_BRIGHTNESS_B = min(leds.STAR_BRIGHTNESS_B+modVal, 255)
-            if leds.BRIGHTNESS_MOD == 0 or leds.BRIGHTNESS_MOD == 3:
-                leds.GOAT_BRIGHTNESS = min(leds.GOAT_BRIGHTNESS+modVal, 255)
-        if key in BUTTONS_MENU_CONFIRM:
-            if leds.BRIGHTNESS_MOD == 0 or leds.BRIGHTNESS_MOD == 1:
-                if leds.STAR_BRIGHTNESS_A > 255/2:
-                    newBright = 10
-                else:
-                    newBright = 255
-            if leds.BRIGHTNESS_MOD == 2:
-                if leds.STAR_BRIGHTNESS_B > 255/2:
-                    newBright = 10
-                else:
-                    newBright = 255
-            if leds.BRIGHTNESS_MOD == 3:                
-                if leds.GOAT_BRIGHTNESS > 255/2:
-                    newBright = 10
-                else:
-                    newBright = 255            
-
-            if leds.BRIGHTNESS_MOD == 0 or leds.BRIGHTNESS_MOD == 1:
-                leds.STAR_BRIGHTNESS_A = newBright
-            if leds.BRIGHTNESS_MOD == 0 or leds.BRIGHTNESS_MOD == 2:
-                leds.STAR_BRIGHTNESS_B = newBright
-            if leds.BRIGHTNESS_MOD == 0 or leds.BRIGHTNESS_MOD == 3:
-                leds.GOAT_BRIGHTNESS = newBright            
-        leds.UpdateBrightness(leds.STAR_BRIGHTNESS_A, leds.STAR_BRIGHTNESS_B, leds.GOAT_BRIGHTNESS)
-        leds.UpdateLeds()
-
-    def ControllerText():
-        ports = serial.tools.list_ports.comports()
-        for port in ports:
-            if GAME_STATE.CONTROLLER_COM_ADDR == port.device:
-                if GAME_STATE.CONTROLLER_COM:
-                    return f"[X] Serial Controller: {port.description}"
-                else:
-                    return f"[ ] Serial Controller: {port.description}"
-        GAME_STATE.CONTROLLER_COM = None
-        return f"[ ] Controller Commands Device: <none>"
-
-    def ControllerAction(key):
-        ports = serial.tools.list_ports.comports()
-        current_index = -1
-        i = 0
-        for port in ports:
-            print(f"Port {i}: {port.device}: {port.description}")
-            if GAME_STATE.CONTROLLER_COM_ADDR == port.device:
-                current_index = i
-            i += 1
-        
-        new_index = current_index
-        
-        if key in BUTTONS_MENU_LEFT:
-            new_index -= 1
-        if key in BUTTONS_MENU_RIGHT:
-            new_index += 1
-        
-        if (new_index < -1) or (new_index >= len(ports)):
-            new_index = -1
-        
-        if new_index >= 0:
-            GAME_STATE.CONTROLLER_COM_ADDR = ports[new_index].device
-        else:
-            GAME_STATE.CONTROLLER_COM_ADDR = ''
-
-        if key in BUTTONS_MENU_CONFIRM:
-            if GAME_STATE.CONTROLLER_COM:
-                GAME_STATE.CONTROLLER_COM.write(bytes(f"serial off", 'utf-8'))
-                GAME_STATE.CONTROLLER_COM.flush()
-                GAME_STATE.CONTROLLER_COM = None
-            else:
-                try:
-                    GAME_STATE.CONTROLLER_COM = serial.Serial(port=ports[new_index].device, baudrate=9600, timeout=.1)
-                    GAME_STATE.CONTROLLER_COM.write(bytes(f"serial on", 'utf-8'))
-                    GAME_STATE.CONTROLLER_COM.flush()
-                except:
-                    GAME_STATE.CONTROLLER_COM = None
-
-
-    def ControllerSoundText():
-        if GAME_STATE.CONTROLLER_PLAY_CATCH_SOUND:
-            return "Controller Sounds: Viel"
-        else:
-            return "Controller Sounds: Wenig"
-
-    def ToggleControllerSound(key):
-        GAME_STATE.CONTROLLER_PLAY_CATCH_SOUND = not GAME_STATE.CONTROLLER_PLAY_CATCH_SOUND
-       
 
     # get input
     def handleKey(key):
         if key in BUTTONS_MENU_OPEN:
-            GAME_STATE.CURRENT_MENU = MenuScreen(GAME_STATE, screen, {"Zurück zum Spiel": CloseMenu, LedText: ToggleLedActive, LedBrightText: LedBright, ControllerText: ControllerAction, ControllerSoundText: ToggleControllerSound, "Neues Spiel (Normal)": Reset6, "Neues Spiel (Einfach)": Reset3, "Spiel Beenden": QuitGame})
+            GAME_STATE.CURRENT_MENU = MENU_FACTORY.FullMenu()
             return True
         if key == pg.K_PAGEUP:
             Reset6(key)
@@ -614,10 +462,10 @@ def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButto
                 player.jump([star for star in stars if star.hangingLow])
         if ((key == pg.K_F7) or (key == pg.K_F10)):
             load_last_recording()
-            replay(RECORDING, player, stars, screen, leds)
+            replay(RECORDING, player, stars, screen, GAME_STATE.LED_HANDLER)
             return True
         if ((key == pg.K_F8) or (key == pg.K_F11)):
-            replay(RECORDING, player, stars, screen, leds)
+            replay(RECORDING, player, stars, screen, GAME_STATE.LED_HANDLER)
             return True
         return False
 
@@ -683,6 +531,8 @@ def PlayLoop(player, scoreText, statText, statMissedText, leds, stars, gameButto
     # clear/erase the last drawn sprites
     gameSprites.clear(screen, background)
     
+    leds = GAME_STATE.LED_HANDLER
+
     leds.SetAllLedsOff()
 
     # make stars land on player before update

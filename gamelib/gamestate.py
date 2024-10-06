@@ -22,6 +22,9 @@ class GameState():
 
     LAST_SERIAL_BUTTONS = []
 
+    LED_HANDLER = None
+    
+
     def __init__(self, conf: GameConfig, vizConf: GameVisualizationConfig):
         self.config = conf
         self.vizConfig = vizConf
