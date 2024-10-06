@@ -1,24 +1,41 @@
-class GameConfig():
+class GameConfig:
+    STAR_BASE_LIKELIHOOD: float  # Likelihood of first star per spawn block (0.3 = 30%, 2nd star half of it)
+    STAR_MAX_LIKELIHOOD: float  # Max likelihood for first star per spawn block (2nd star half of it)
+    STAR_TIMER_LIKELIHOOD: float  # star spawn likelihood increase over time
+    FORCE_STAR_SPAWN_MIN: int  # if less stars than this are visible, first star spawns 100%
+    MAX_STARS: int  # max stars per row
+
+    # speed
+    FRAME_RATE: int # fps
+    STAR_MOVE_RATE: int # stars move every x frames
+
+    # game end
+    STAR_STOP_SPAWN_FRAME_COUNT: int  # no more stars after this frame
+    END_FRAME_COUNT: int # game ends after this frame
+
+    # how many stars? 3x6 or 6x6
+    ROWS: int
+    COLUMNS: int  # code works with 3 or 6 columns
 
     def __init__(self):
         self.reset()
 
     def reset(self):
         # difficulty settings
-        self.STAR_BASE_LIKELYHOOD = 0.3 # at start 30% chance of 1 star. (15% for 2nd star)
-        self.STAR_MAX_LIKELYHOOD = 0.95 # max chance of 95% for 1 star (47.5% for 2nd star)
-        self.STAR_TIMER_LIKELYHOOD = 0.0005 # star spawn likely hood increase over time
-        self.FORCE_STAR_SPAWN_MIN = 2 # if 2 or less stars 1 star spawns 100%
-        self.MAX_STARS = 2 # max stars per row
+        self.STAR_BASE_LIKELIHOOD = 0.3
+        self.STAR_MAX_LIKELIHOOD = 0.95
+        self.STAR_TIMER_LIKELIHOOD = 0.0005
+        self.FORCE_STAR_SPAWN_MIN = 2
+        self.MAX_STARS = 2
 
         # speed
-        self.FRAME_RATE = 10; # fps
-        self.STAR_MOVE_RATE = 10; # stars move every x frames
+        self.FRAME_RATE = 10
+        self.STAR_MOVE_RATE = 10
 
         # game end
-        self.STAR_STOP_SPAWN_FRAMECOUNT = 1120; # no more stars after 112 seconds
-        self.END_FRAMECOUNT = 1200; # stop game loop after 120 seconds
+        self.STAR_STOP_SPAWN_FRAME_COUNT = 1120 # 112 seconds
+        self.END_FRAME_COUNT = 1200 # 120 seconds
 
         # how many stars? 3x6 or 6x6
-        self.ROWS = 6;
-        self.COLUMNS = 6; # code works with 3 or 6 columns
+        self.ROWS = 6
+        self.COLUMNS = 6

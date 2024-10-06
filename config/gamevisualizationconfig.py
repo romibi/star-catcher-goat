@@ -1,6 +1,6 @@
 from pygame import Rect
 
-class GameVisualizationConfig():
+class GameVisualizationConfig:
     # vizPos für 3 columns
     vizRects3 = [
        [ Rect(84,  72, 32, 32),                                                 Rect(372,  72, 32, 32), Rect(552,  72, 32, 32)                        ],

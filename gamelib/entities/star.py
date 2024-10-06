@@ -50,8 +50,8 @@ class Star(pg.sprite.Sprite):
         if self.frame % self.gamestate.config.STAR_MOVE_RATE == 0:
             self.fall()
 
-        if not self.gamestate.SCREENRECT.contains(self.rect):
+        if not self.gamestate.SCREEN_RECT.contains(self.rect):
             self.facing = -self.facing
             self.rect.top = self.rect.bottom + 1
-            self.rect = self.rect.clamp(self.gamestate.SCREENRECT)
+            self.rect = self.rect.clamp(self.gamestate.SCREEN_RECT)
         self.frame = self.frame + 1

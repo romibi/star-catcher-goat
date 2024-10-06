@@ -4,7 +4,6 @@ from typing import List
 from pygame import Rect
 
 class UiText(pg.sprite.Sprite):
-    ""
     text = ""
 
     def __init__(self, *groups):
@@ -18,6 +17,7 @@ class UiText(pg.sprite.Sprite):
         self.targetRect = Rect(0,0,0,0)
         self.align = -1 # -1 left, 0 center, 1 right
         self.update()
+        self.image = self.font.render(self.text, 0, self.color)
         self.rect = self.image.get_rect().move(10, 450)
 
 
@@ -36,12 +36,11 @@ class UiText(pg.sprite.Sprite):
             if self.align == 0:
                 self.rect.left = self.rect.left + ((self.targetRect.width - img.get_rect().width) / 2)
             elif self.align == 1:
-                self.rect.left = self.rect.left + ((self.targetRect.width - img.get_rect().width))
+                self.rect.left = self.rect.left + (self.targetRect.width - img.get_rect().width)
 
 
 class ButtonIcon(pg.sprite.Sprite):
-
-    animcycle = 24
+    animation_cycle = 24
     images: List[pg.Surface] = []
     paused = False
 
@@ -60,5 +59,5 @@ class ButtonIcon(pg.sprite.Sprite):
             return
 
         self.frame = self.frame + 1
-        self.image = self.images[self.frame // self.animcycle % 2]
+        self.image = self.images[self.frame // self.animation_cycle % 2]
 

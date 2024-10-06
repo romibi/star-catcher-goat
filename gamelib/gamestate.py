@@ -4,8 +4,9 @@ from pygame import Rect
 from config.gameconfig import GameConfig
 from config.gamevisualizationconfig import GameVisualizationConfig
 
-class GameState():
-    SCREENRECT = Rect(0, 0, 1280, 720)
+class GameState:
+    # todo: check what None values could be moved to constructor
+    SCREEN_RECT = Rect(0, 0, 1280, 720)
 
     CURRENT_MENU = None
     MENU_JUST_CLOSED = False
@@ -40,17 +41,16 @@ class GameState():
     SCORE_STATS = None
     SCORE_MISSED = None
 
-
-    def reset(self, newColumns):
+    def reset(self, new_columns):
         # Shutdown LEDS
-        self.LED_HANDLER.SetAllLedsOff()
-        self.LED_HANDLER.UpdateLeds()
+        self.LED_HANDLER.set_all_leds_off()
+        self.LED_HANDLER.update_leds()
 
         for star in self.STARS:
             star.kill()
 
         self.config.reset() # restore default values (in case recording replay manipulated them)
-        self.config.COLUMNS = newColumns
+        self.config.COLUMNS = new_columns
 
         if self.config.COLUMNS == 3:
             self.vizConfig.vizRects = self.vizConfig.vizRects3
@@ -70,7 +70,7 @@ class GameState():
             self.OnResetGame()
 
 
-    def __init__(self, conf: GameConfig, vizConf: GameVisualizationConfig):
+    def __init__(self, conf: GameConfig, visualization_config: GameVisualizationConfig):
         self.config = conf
-        self.vizConfig = vizConf
+        self.vizConfig = visualization_config
         self.OnResetGame = None

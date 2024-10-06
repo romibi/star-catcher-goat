@@ -4,7 +4,7 @@ import grequests
 from config.ledconfig import *
 from config.gameconfig import GameConfig
 
-class LedHandler():
+class LedHandler:
     STAR_COLOR = 'FF9000'
     BRIGHTNESS_MOD = 0 # modifying 0=ALL, 1=A, 2=B, 3=G
     STAR_BRIGHTNESS_A = 255 # row 0-2
@@ -14,7 +14,7 @@ class LedHandler():
     # change color of segment 1 (0) to green: http://192.168.1.107/win&SM=0&SB=255&CL=H00FF00
     API_ADDR = '/win'
     API_ARG_SEGMENT = '&SM='
-    API_ARG_BRIGHTNES = '&SB='
+    API_ARG_BRIGHTNESS = '&SB='
     API_ARG_COLOR = '&CL=H'
 
 
@@ -55,9 +55,10 @@ class LedHandler():
     hubs = {}
     stars = {}
     leds = {}
+    # todo: add goat leds
 
-    def __init__(self, gameconf: GameConfig):
-        self.gameconfig = gameconf
+    def __init__(self, game_config: GameConfig):
+        self.game_config = game_config
         self.active = -1 # 0: no, 1: yes, -1: active unless first request fails
         self.reset()
 
@@ -68,32 +69,32 @@ class LedHandler():
         self.leds = {}
 
         if HUB_ADDR_STAR_1 != '':
-            self.AddStarHub(1, HUB_ADDR_STAR_1)
+            self.add_star_hub(1, HUB_ADDR_STAR_1)
         if HUB_ADDR_STAR_2 != '':
-            self.AddStarHub(2, HUB_ADDR_STAR_2)
+            self.add_star_hub(2, HUB_ADDR_STAR_2)
         if HUB_ADDR_STAR_3 != '':
-            self.AddStarHub(3, HUB_ADDR_STAR_3)
+            self.add_star_hub(3, HUB_ADDR_STAR_3)
         if HUB_ADDR_STAR_4 != '':
-            self.AddStarHub(4, HUB_ADDR_STAR_4)
+            self.add_star_hub(4, HUB_ADDR_STAR_4)
         if HUB_ADDR_STAR_5 != '':
-            self.AddStarHub(5, HUB_ADDR_STAR_5)
+            self.add_star_hub(5, HUB_ADDR_STAR_5)
         if HUB_ADDR_STAR_6 != '':
-            self.AddStarHub(6, HUB_ADDR_STAR_6)
+            self.add_star_hub(6, HUB_ADDR_STAR_6)
 
-        for row in range(self.gameconfig.ROWS):
+        for row in range(self.game_config.ROWS):
             self.stars[row] = {}
             self.leds[row] = {}
-            for column in range(self.gameconfig.COLUMNS):
+            for column in range(self.game_config.COLUMNS):
                 self.stars[row][column] = {}
                 self.leds[row][column] = {}
 
 
 
-    def AddStarHub(self, num, address):
+    def add_star_hub(self, num, address):
         self.hubs[num] = address
 
 
-    def GetStarHub(self, row, column):
+    def get_star_hub(self, row, column):
         if self.ledSegmentMap:
             segment = self.ledSegmentMap[row][column]
             hub = segment["hub"]
@@ -101,17 +102,17 @@ class LedHandler():
         return ''
 
 
-    def GetLedApiUrl(self, row, column, bright, color):
-        hub = self.GetStarHub(row, column);
+    def get_led_api_url(self, row, column, bright, color):
+        hub = self.get_star_hub(row, column)
         if not hub:
-            return None;
+            return None
   
-        segment = self.ledSegmentMap[row][column];
+        segment = self.ledSegmentMap[row][column]
 
-        return f'http://{hub}{self.API_ADDR}{self.API_ARG_SEGMENT}{segment["segment"]}{self.API_ARG_BRIGHTNES}{bright}{self.API_ARG_COLOR}{color}'
+        return f'http://{hub}{self.API_ADDR}{self.API_ARG_SEGMENT}{segment["segment"]}{self.API_ARG_BRIGHTNESS}{bright}{self.API_ARG_COLOR}{color}'
 
 
-    def SetStarLed(self, row, column, bright, color=None):
+    def set_star_led(self, row, column, bright, color=None):
         self.stars[row][column]['bright'] = bright
         if not 'color' in self.stars[row][column]:
             self.stars[row][column]['color'] = self.STAR_COLOR
@@ -119,49 +120,51 @@ class LedHandler():
             self.stars[row][column]['color'] = color
 
 
-    def SetAllLedsOff(self):
+    def set_all_leds_off(self):
         for row, starRow in self.stars.items():
             for column, star in starRow.items():
-                self.SetStarLed(row, column, 0)
+                self.set_star_led(row, column, 0)
 
 
-    def UpdateBrightness(self, newBrightnessA, newBrightnessB, newBrightnessG):
+    def update_brightness(self, new_brightness_a, new_brightness_b, new_brightness_g):
         for row, starRow in self.stars.items():
             for column, star in starRow.items():
                 if star.get('bright', 0) > 0:
                     if row > 2:
-                        star['bright'] = newBrightnessB
+                        star['bright'] = new_brightness_b
                     else:
-                        star['bright'] = newBrightnessA
+                        star['bright'] = new_brightness_a
+        # todo: update brightness of goat
 
 
-    def UpdateLeds(self):
+    def update_leds(self):
         urls = []
         for row, starRow in self.stars.items():
             for column, star in starRow.items():
                 led = self.leds[row][column]
 
-                starBrigth = star.get('bright', 0)
-                ledBrigth = led.get('bright', None)
+                star_brightness = star.get('bright', 0)
+                led_brightness = led.get('bright', None)
 
-                starColor = star.get('color', self.STAR_COLOR)
-                ledColor = star.get('color', None)
+                star_color = star.get('color', self.STAR_COLOR)
+                led_color = star.get('color', None)
 
-                if (starBrigth == ledBrigth) and (starColor == ledColor):
+                if (star_brightness == led_brightness) and (star_color == led_color):
                     continue
 
-                self.leds[row][column]['bright'] = starBrigth
-                self.leds[row][column]['color'] = starColor
+                self.leds[row][column]['bright'] = star_brightness
+                self.leds[row][column]['color'] = star_color
 
-                apiUrl = self.GetLedApiUrl(row, column, starBrigth, starColor)
-                if not apiUrl:
+                api_url = self.get_led_api_url(row, column, star_brightness, star_color)
+                if not api_url:
                     continue
 
-                urls += [apiUrl]
-                #print(f"Adding url for star row: {row} column: {column} to request: {apiUrl}")
+                urls += [api_url]
+                #print(f"Adding url for star row: {row} column: {column} to request: {api_url}")
         
         rs = (grequests.get(u, timeout=5) for u in urls)
 
+        # noinspection PyShadowingNames
         def call_map(rs, exception_handler):
             grequests.map(rs, exception_handler=exception_handler)
 
@@ -169,6 +172,8 @@ class LedHandler():
             return
         elif self.active == -1:
             self.active = 1
+
+            # noinspection PyUnusedLocal
             def exception_handler(request, exception):
                 self.active = 0            
             threading.Thread(target=call_map, args=(rs,exception_handler)).start()
