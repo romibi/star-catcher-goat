@@ -8,10 +8,8 @@ from gamelib.gamestate import GameState
 from gamelib.menus.menuscreen import MenuScreen
 
 class MenuFactory():
-    def __init__(self, state: GameState, screen, resetGameFunc):
+    def __init__(self, state: GameState):
         self.gamestate = state
-        self.screen = screen
-        self.resetGameFunc = resetGameFunc
 
 
     def _closeMenu(self, key):
@@ -25,12 +23,12 @@ class MenuFactory():
 
     def _reset3(self, key):
         self._closeMenu(key)
-        self.resetGameFunc(3)
+        self.gamestate.reset(3)
 
 
     def _reset6(self, key):
         self._closeMenu(key)
-        self.resetGameFunc(6)
+        self.gamestate.reset(6)
 
 
     def _ledText(self):
@@ -184,13 +182,13 @@ class MenuFactory():
 
 
     def FullMenu(self):
-        return MenuScreen(self.gamestate, self.screen, \
-            {"Zurück zum Spiel": self._closeMenu, \
-             self._ledText: self._ledToggleActive, \
-             self._ledBrightText: self._ledBright, \
-             self._controllerText: self._controllerAction, \
-             self._controllerSoundText: self._toggleControllerSound, \
-             "Neues Spiel (Normal)": self._reset6, \
-             "Neues Spiel (Einfach)": self._reset3, \
-             "Spiel Beenden": self._quitGame \
-            })
+        return MenuScreen(self.gamestate,
+            {"Zurück zum Spiel": self._closeMenu,
+             self._ledText: self._ledToggleActive,
+             self._ledBrightText: self._ledBright,
+             self._controllerText: self._controllerAction,
+             self._controllerSoundText: self._toggleControllerSound,
+             "Neues Spiel (Normal)": self._reset6,
+             "Neues Spiel (Einfach)": self._reset3,
+             "Spiel Beenden": self._quitGame
+             })

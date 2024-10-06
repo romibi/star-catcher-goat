@@ -3,16 +3,14 @@ import pygame as pg
 from config.buttonconfig import *
 
 from gamelib.uielements import *
-#from typing import List
-#from pygame import Rect
 
 from gamelib.gamestate import GameState
 
 class MenuScreen():
-    def __init__(self, state: GameState, screen, menuOptionMap):
+    def __init__(self, state: GameState, menuOptionMap):
         self.gamestate = state
-        self.screen = screen
-        self.background = screen.copy()
+        self.screen = state.GAME_SCREEN
+        self.background = self.screen.copy()
         self.sprites = pg.sprite.RenderUpdates()
         self.cursor = UiText(self.sprites)
         self.cursor.text = ">"
@@ -36,11 +34,16 @@ class MenuScreen():
         overlayBg.fill((0,0,0, 150))
         self.background.blit(overlayBg, (0, 0))
 
+    def _closeMenu(self):        
+        self.gamestate.CURRENT_MENU = False
+        self.gamestate.MENU_JUST_CLOSED = True
+
+
 
     def Loop(self, serial_keys):
         def handleKey(key):
             if key in BUTTONS_MENU_CLOSE:
-                CloseMenu(key)
+                self._closeMenu()
                 return True
             if key in BUTTONS_MENU_DOWN:
                 self.cursorIndex = min(self.cursorIndex+1, len(self.menuOptionMap.keys())-1)

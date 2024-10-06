@@ -32,7 +32,7 @@ if not pg.image.get_extended():
 CURRENT_GAME_VERSION = "(unknown)"
 
 def get_git_revision_hash() -> str:
-    currdir = os.path.dirname(od.path.realpath(__file__))
+    currdir = os.path.dirname(os.path.realpath(__file__))
     return subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD'], cwd=currdir).decode('ascii').strip()
 
 try:
@@ -52,6 +52,8 @@ MENU_FACTORY = None
 
 RECORDING = None
 
+#### RECORDING STUFF #########################################################
+# todo: move recording logic out of this file
 def InitRecording():
     """
     Remarks:
@@ -102,9 +104,6 @@ def ApplyRecordingSettings():
         if "rows" in settings: GAME_CONFIG.ROWS = settings["rows"]
         if "columns" in settings:
             GAME_CONFIG.COLUMNS = settings["columns"]
-        elif "columns" in RECORDING:
-            GAME_CONFIG.COLUMNS = RECORDING["columns"] # very first few recordings had columns directly in main dict
-
 
 def save_recording(points=None):
     try:
@@ -125,8 +124,9 @@ def save_recording(points=None):
         with open(filename, "wb") as f:
             pickle.dump(RECORDING, f, protocol=pickle.HIGHEST_PROTOCOL)
             print(f"Saved {filename}")
-    except exception as ex:
+    except Exception as ex:
         print("Error during pickling object (Possibly unsupported):", ex)
+
 
 def load_last_recording():
     global RECORDING
@@ -143,8 +143,22 @@ def load_last_recording():
 
         if RECORDING["gamever"] != CURRENT_GAME_VERSION:
             print("Warning: loaded game recording was recorded with a different version! Replay might differ!")
-    except exception as ex:
+    except Exception as ex:
         print("Error during pickling object (Possibly unsupported):", ex)
+
+
+def replay(recording):
+    global RECORDING
+    
+    GAME_STATE.reset(RECORDING["settings"]["columns"])
+
+    RECORDING = recording
+    ApplyRecordingSettings()
+
+    GAME_STATE.REPLAY = True
+    random.seed(RECORDING["seed"])
+
+#### END RECORDING STUFF #########################################################
 
 
 # helper functions
@@ -170,50 +184,6 @@ def load_sound(file):
     except pg.error:
         print(f"Warning, unable to load, {file}")
     return None
-
-
-def ResetGame(newColumns, player, stars, screen, leds, clear_recording=True):
-    # Shutdown LEDS
-    leds.SetAllLedsOff()
-    leds.UpdateLeds()
-
-    GAME_CONFIG.reset() # restore default values (in case recording replay manipulated them)
-    GAME_CONFIG.COLUMNS = newColumns
-
-    if GAME_CONFIG.COLUMNS == 3:
-        GAME_VIZ_CONF.vizRects = GAME_VIZ_CONF.vizRects3
-        leds.ledSegmentMap = leds.ledSegmentMap3
-    else:
-        GAME_VIZ_CONF.vizRects = GAME_VIZ_CONF.vizRects6
-        leds.ledSegmentMap = leds.ledSegmentMap6
-
-    leds.reset()
-    player.reset()
-    GAME_STATE.StarsMissed = 0
-
-    for star in stars:
-        star.kill()
-
-    ReRenderBackground(screen)
-    pg.display.flip()
-
-    if clear_recording:
-        InitRecording()
-        random.seed(RECORDING["seed"])
-
-    GAME_STATE.REPLAY = False
-    GAME_STATE.FRAME_COUNT = 0
-
-
-def replay(recording, player, stars, screen, leds):
-    global RECORDING
-    #print(f"Replaying {recording}")
-    RECORDING = recording
-    ApplyRecordingSettings()
-
-    ResetGame(GAME_CONFIG.COLUMNS, player, stars, screen, leds, False)
-    GAME_STATE.REPLAY = True
-    random.seed(RECORDING["seed"])
 
 
 def spawnNewStarRow(stars, stargroups):
@@ -289,6 +259,15 @@ def GetButtonsFromSerial():
                     result += [SERIAL_BUTTON_RIGHT]
     return result
 
+
+def DoOnResetGame():
+    ReRenderBackground()
+    pg.display.flip()
+
+    InitRecording()
+    random.seed(RECORDING["seed"])
+
+
 def main(winstyle=0):
     # Initialize pygame
     if pg.get_sdl_version()[0] == 2:
@@ -303,6 +282,8 @@ def main(winstyle=0):
     winstyle = 0  # |FULLSCREEN
     bestdepth = pg.display.mode_ok(GAME_STATE.SCREENRECT.size, winstyle, 32)
     screen = pg.display.set_mode(GAME_STATE.SCREENRECT.size, winstyle, bestdepth)
+    GAME_STATE.GAME_SCREEN = screen
+    GAME_STATE.OnResetGame = DoOnResetGame
 
     # Load images, assign to sprite classes
     # (do this before the classes are used, after screen setup)
@@ -320,6 +301,7 @@ def main(winstyle=0):
     # create the background, tile the bgd image
     bgdtile = load_image("background.png")
     background = pg.Surface(GAME_STATE.SCREENRECT.size)
+    GAME_STATE.GAME_BACKGROUND = background
     for x in range(0, GAME_STATE.SCREENRECT.width, bgdtile.get_width()):
         background.blit(bgdtile, (x, 0))
     screen.blit(background, (0, 0))
@@ -330,31 +312,29 @@ def main(winstyle=0):
     clock = pg.time.Clock()
 
     # Initialize Game Groups
-    stars = pg.sprite.Group()
-    gameButtons = pg.sprite.Group()    
-    endButtons = pg.sprite.Group()
+    stars = GAME_STATE.STARS
 
-    gameSprites = pg.sprite.RenderUpdates()
+    gameUiSprites = GAME_STATE.GAME_UI_SPRITES
+    endUiSprites = GAME_STATE.END_UI_SPRITES
+
+    gameSprites =  GAME_STATE.GAME_SPRITES
 
     # initialize our starting sprites
-    player = Player(GAME_STATE, gameSprites)
+    GAME_STATE.PLAYER = Player(GAME_STATE, gameSprites)
 
     # right/left buttons
-    ButtonIcon(810, 330, [load_image(im) for im in ("button_blue_left.png", "button_blue_left_pressed.png")], (gameButtons, gameSprites)).frame = 24 # offset button animations a bit
-    ButtonIcon(860, 330, [load_image(im) for im in ("button_blue_right.png", "button_blue_right_pressed.png")], (gameButtons, gameSprites))
-    ButtonIcon(780, 370, [load_image(im) for im in ("button_yellow.png", "button_yellow_pressed.png")], (gameButtons, gameSprites)).frame = 12
+    ButtonIcon(810, 330, [load_image(im) for im in ("button_blue_left.png", "button_blue_left_pressed.png")], (gameUiSprites, gameSprites)).frame = 24 # offset button animations a bit
+    ButtonIcon(860, 330, [load_image(im) for im in ("button_blue_right.png", "button_blue_right_pressed.png")], (gameUiSprites, gameSprites))
+    ButtonIcon(780, 370, [load_image(im) for im in ("button_yellow.png", "button_yellow_pressed.png")], (gameUiSprites, gameSprites)).frame = 12
 
-    ButtonIcon(750, 620, [load_image(im) for im in ("button_black_right.png", "button_black_right_pressed.png")], (endButtons, gameSprites)).frame = 24
-    ButtonIcon(750, 670, [load_image(im) for im in ("button_black_left.png", "button_black_left_pressed.png")], (endButtons, gameSprites))
+    ButtonIcon(750, 620, [load_image(im) for im in ("button_black_right.png", "button_black_right_pressed.png")], (endUiSprites, gameSprites)).frame = 24
+    ButtonIcon(750, 670, [load_image(im) for im in ("button_black_left.png", "button_black_left_pressed.png")], (endUiSprites, gameSprites))
 
     leds = LedHandler(GAME_CONFIG)
     GAME_STATE.LED_HANDLER = leds
 
-    def ResetNum(num):
-        ResetGame(num, player, stars, screen, GAME_STATE.LED_HANDLER)
     global MENU_FACTORY
-    MENU_FACTORY = MenuFactory(GAME_STATE, screen, ResetNum)
-
+    MENU_FACTORY = MenuFactory(GAME_STATE)
 
     if pg.font:
         scoreText = UiText(gameSprites)
@@ -362,11 +342,16 @@ def main(winstyle=0):
         scoreText.font = pg.font.Font(None, 56)
         scoreText.color = "#FFC000"
         scoreText.align = 0
+        GAME_STATE.SCORE_POINTS = scoreText
+
         statText = UiText(gameSprites)
         statText.targetRect = Rect(739,515, 510, 50)
+        GAME_STATE.SCORE_STATS = statText
+
         statMissedText = UiText(gameSprites)
         statMissedText.targetRect = Rect(739,550, 510, 50)
         statMissedText.color = "grey"
+        GAME_STATE.SCORE_MISSED = statMissedText
 
     #try find controller com port
     ports = serial.tools.list_ports.comports()
@@ -381,10 +366,10 @@ def main(winstyle=0):
             GAME_STATE.CONTROLLER_COM = None
 
     # reset before first loop to have same random starting condition as in replay
-    ResetGame(6, player, stars, screen, GAME_STATE.LED_HANDLER)
+    GAME_STATE.reset(6)
 
     # Run our main loop whilst the player is alive.
-    while player.alive() and not GAME_STATE.GAME_QUIT:
+    while GAME_STATE.PLAYER.alive() and not GAME_STATE.GAME_QUIT:
         # get currently pressed buttons on serial contrller
         serial_keys = GetButtonsFromSerial()
         next_key_list = serial_keys.copy() # copy for next frame
@@ -400,9 +385,7 @@ def main(winstyle=0):
         if GAME_STATE.CURRENT_MENU:
             GAME_STATE.CURRENT_MENU.Loop(serial_keys)
         else:
-            # todo: move scoreText, statText, statMissedText, gameButtons, endButtons and background to some GUI class/object contained in GAME_STATE
-            # todo: move player, stars, leds,, gameSpprites, screen and background to GAME_STATE
-            PlayLoop(player, scoreText, statText, statMissedText, stars, gameButtons, endButtons, gameSprites, screen, background, serial_keys)
+            PlayLoop(serial_keys)
             GAME_STATE.MENU_JUST_CLOSED = False
 
         # cap the framerate at 10fps. Also called 10HZ or 10 times per second.
@@ -422,7 +405,7 @@ def main(winstyle=0):
         pg.mixer.music.fadeout(1000)
     pg.time.wait(1000)
 
-def ReRenderBackground(screen):
+def ReRenderBackground():
     if GAME_CONFIG.COLUMNS == 3:
         bgdtile = load_image("backgroundB.png")
     else:
@@ -431,10 +414,24 @@ def ReRenderBackground(screen):
     background = pg.Surface(GAME_STATE.SCREENRECT.size)
     for x in range(0, GAME_STATE.SCREENRECT.width, bgdtile.get_width()):
         background.blit(bgdtile, (x, 0))
-    screen.blit(background, (0, 0))
+    GAME_STATE.GAME_SCREEN.blit(background, (0, 0))
 
 
-def PlayLoop(player, scoreText, statText, statMissedText, stars, gameButtons, endButtons, gameSprites, screen, background, serial_keys):
+def PlayLoop(serial_keys):
+    # load some Game state objects to local vars
+    screen = GAME_STATE.GAME_SCREEN
+    background = GAME_STATE.GAME_BACKGROUND
+
+    player = GAME_STATE.PLAYER
+    stars = GAME_STATE.STARS
+
+    gameSprites =  GAME_STATE.GAME_SPRITES
+
+    scoreText = GAME_STATE.SCORE_POINTS
+    statText = GAME_STATE.SCORE_STATS
+    statMissedText = GAME_STATE.SCORE_MISSED
+
+    # increase frame count
     GAME_STATE.FRAME_COUNT += 1
 
     # get input
@@ -443,10 +440,10 @@ def PlayLoop(player, scoreText, statText, statMissedText, stars, gameButtons, en
             GAME_STATE.CURRENT_MENU = MENU_FACTORY.FullMenu()
             return True
         if key == pg.K_PAGEUP:
-            Reset6(key)
+            GAME_STATE.reset(6)
             return True
         if key == pg.K_PAGEDOWN:
-            Reset3(key)
+            GAME_STATE.reset(3)
             return True
         if key in BUTTONS_MOVE_RIGHT:
             if not GAME_STATE.REPLAY:
@@ -462,10 +459,10 @@ def PlayLoop(player, scoreText, statText, statMissedText, stars, gameButtons, en
                 player.jump([star for star in stars if star.hangingLow])
         if ((key == pg.K_F7) or (key == pg.K_F10)):
             load_last_recording()
-            replay(RECORDING, player, stars, screen, GAME_STATE.LED_HANDLER)
+            replay(RECORDING)
             return True
         if ((key == pg.K_F8) or (key == pg.K_F11)):
-            replay(RECORDING, player, stars, screen, GAME_STATE.LED_HANDLER)
+            replay(RECORDING)
             return True
         return False
 
@@ -511,10 +508,10 @@ def PlayLoop(player, scoreText, statText, statMissedText, stars, gameButtons, en
 
 
     if (GAME_STATE.FRAME_COUNT == 1) or (GAME_STATE.FRAME_COUNT == GAME_CONFIG.END_FRAMECOUNT):
-        for button in gameButtons:
-            button.paused = GAME_STATE.FRAME_COUNT != 1
-        for button in endButtons:
-            button.paused = GAME_STATE.FRAME_COUNT != GAME_CONFIG.END_FRAMECOUNT
+        for sprite in GAME_STATE.GAME_UI_SPRITES:
+            sprite.paused = GAME_STATE.FRAME_COUNT != 1
+        for sprite in GAME_STATE.END_UI_SPRITES:
+            sprite.paused = GAME_STATE.FRAME_COUNT != GAME_CONFIG.END_FRAMECOUNT
 
     if (GAME_STATE.FRAME_COUNT == GAME_CONFIG.END_FRAMECOUNT) and (not GAME_STATE.REPLAY):
         # todo: Add Hi-Score Name enter screen and Hi-Score list
@@ -526,7 +523,7 @@ def PlayLoop(player, scoreText, statText, statMissedText, stars, gameButtons, en
 
     # re-draw whole background
     if GAME_STATE.MENU_JUST_CLOSED:
-        ReRenderBackground(screen)
+        ReRenderBackground()
        
     # clear/erase the last drawn sprites
     gameSprites.clear(screen, background)
