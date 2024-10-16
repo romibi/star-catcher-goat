@@ -163,9 +163,13 @@ def replay(recording):
 
 
 # helper functions
-def load_image(file):
+def load_image(file, subfolder=None):
     """loads an image, prepares it for play"""
-    file = os.path.join(main_dir, "data", file)
+    if subfolder:
+        file = os.path.join(main_dir, "data", subfolder, file)
+    else:
+        file = os.path.join(main_dir, "data", file)
+
     try:
         surface = pg.image.load(file)
     except pg.error:
@@ -286,7 +290,7 @@ def main():
     # Load images, assign to sprite classes
     # (do this before the classes are used, after screen setup)
     
-    Player.images = [load_image(im) for im in ("goatL.png", "goatR.png", "goatLHorn.png", "goatRHorn.png", "goatLBody.png", "goatRBody.png", "goatLFullGlow.png", "goatRFullGlow.png")]
+    Player.images = [load_image(im, "goat64") for im in ("goatL.png", "goatR.png", "goatLHorn.png", "goatRHorn.png", "goatLBody.png", "goatRBody.png", "goatLFullGlow.png", "goatRFullGlow.png")]
     img = load_image("star.png")
     Star.images = [img]
 
@@ -320,16 +324,16 @@ def main():
 
     # right/left buttons
     # noinspection PyTypeChecker
-    ButtonIcon(810, 330, [load_image(im) for im in ("button_blue_left.png", "button_blue_left_pressed.png")], (game_ui_sprites, game_sprites)).frame = 24 # offset button animations a bit
+    ButtonIcon(810, 330, [load_image(im, "buttons32") for im in ("button_blue_left.png", "button_blue_left_pressed.png")], (game_ui_sprites, game_sprites)).frame = 24 # offset button animations a bit
     # noinspection PyTypeChecker
-    ButtonIcon(860, 330, [load_image(im) for im in ("button_blue_right.png", "button_blue_right_pressed.png")], (game_ui_sprites, game_sprites))
+    ButtonIcon(860, 330, [load_image(im, "buttons32") for im in ("button_blue_right.png", "button_blue_right_pressed.png")], (game_ui_sprites, game_sprites))
     # noinspection PyTypeChecker
-    ButtonIcon(780, 370, [load_image(im) for im in ("button_yellow.png", "button_yellow_pressed.png")], (game_ui_sprites, game_sprites)).frame = 12
+    ButtonIcon(780, 370, [load_image(im, "buttons32") for im in ("button_yellow.png", "button_yellow_pressed.png")], (game_ui_sprites, game_sprites)).frame = 12
 
     # noinspection PyTypeChecker
-    ButtonIcon(750, 620, [load_image(im) for im in ("button_black_right.png", "button_black_right_pressed.png")], (end_ui_sprites, game_sprites)).frame = 24
+    ButtonIcon(750, 620, [load_image(im, "buttons32") for im in ("button_black_right.png", "button_black_right_pressed.png")], (end_ui_sprites, game_sprites)).frame = 24
     # noinspection PyTypeChecker
-    ButtonIcon(750, 670, [load_image(im) for im in ("button_black_left.png", "button_black_left_pressed.png")], (end_ui_sprites, game_sprites))
+    ButtonIcon(750, 670, [load_image(im, "buttons32") for im in ("button_black_left.png", "button_black_left_pressed.png")], (end_ui_sprites, game_sprites))
 
     leds = LedHandler(GAME_CONFIG)
     GAME_STATE.LED_HANDLER = leds
