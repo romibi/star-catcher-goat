@@ -1,3 +1,11 @@
+from enum import Enum
+
+# ScreenModeElements = Enum('ScreenModeElements', ['GAME_VIEW', 'GAME_VIEW_SMALL', 'HISCORE', 'BUTTON_VIEW'])
+class ScreenMode(Enum):
+    GAME_BIG = 1
+    SCORE_GAME_BUTTONS_HIGHSCORES = 2
+    SCORE_GAME_BUTTONS = 3
+
 class GameConfig:
     STAR_BASE_LIKELIHOOD: float  # Likelihood of first star per spawn block (0.3 = 30%, 2nd star half of it)
     STAR_MAX_LIKELIHOOD: float  # Max likelihood for first star per spawn block (2nd star half of it)
@@ -17,7 +25,11 @@ class GameConfig:
     ROWS: int
     COLUMNS: int  # code works with 3 or 6 columns
 
+    # Non-resetting configs (not stored in replay)
+    DEFAULT_SCREEN_MODE: ScreenMode
+
     def __init__(self):
+        self.DEFAULT_SCREEN_MODE = ScreenMode.GAME_BIG
         self.reset()
 
     def reset(self):

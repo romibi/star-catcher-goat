@@ -3,6 +3,7 @@ import pygame as pg
 from typing import List
 from pygame import Rect
 
+from config.gameconfig import ScreenMode
 from gamelib.gamestate import GameState
 
 class Player(pg.sprite.Sprite):
@@ -24,6 +25,12 @@ class Player(pg.sprite.Sprite):
         self.reloading = 0
         self.origtop = self.rect.top
         self.updateImage()
+        # todo: possible to remove hack?
+        if not self.gamestate.vizConfig.vizGoatRects:
+            if self.gamestate.screenMode == ScreenMode.GAME_BIG:
+                self.gamestate.vizConfig.vizGoatRects = self.gamestate.vizConfig.vizGoatRectsB
+            else:
+                self.gamestate.vizConfig.vizGoatRects = self.gamestate.vizConfig.vizGoatRectsS
         self.updateRect()
 
     def reset(self):

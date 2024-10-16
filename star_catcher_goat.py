@@ -8,7 +8,7 @@ import pickle
 import serial
 import serial.tools.list_ports
 
-from config.gameconfig import GameConfig
+from config.gameconfig import GameConfig, ScreenMode
 from config.gamevisualizationconfig import GameVisualizationConfig
 from config.buttonconfig import *
 
@@ -287,12 +287,16 @@ def main():
     GAME_STATE.GAME_SCREEN = screen
     GAME_STATE.OnResetGame = do_on_reset_game
 
+    #todo: move all screenmode checks to some reset code to be able to switch via debug menu
+
     # Load images, assign to sprite classes
     # (do this before the classes are used, after screen setup)
-    
-    Player.images = [load_image(im, "goat64") for im in ("goatL.png", "goatR.png", "goatLHorn.png", "goatRHorn.png", "goatLBody.png", "goatRBody.png", "goatLFullGlow.png", "goatRFullGlow.png")]
-    img = load_image("star.png")
-    Star.images = [img]
+    if GAME_STATE.screenMode == ScreenMode.GAME_BIG:
+        Player.images = [load_image(im, "goat64") for im in ("goatL.png", "goatR.png", "goatLHorn.png", "goatRHorn.png", "goatLBody.png", "goatRBody.png", "goatLFullGlow.png", "goatRFullGlow.png")]
+        Star.images = [load_image("star32.png")]
+    elif GAME_STATE.screenMode == ScreenMode.SCORE_GAME_BUTTONS:
+        Player.images = [load_image(im, "goat28") for im in ("goatL.png", "goatR.png", "goatLHorn.png", "goatRHorn.png", "goatLBody.png", "goatRBody.png", "goatLFullGlow.png", "goatRFullGlow.png")]
+        Star.images = [load_image("star12.png")]
 
     ## decorate the game window
     # icon = pg.transform.scale(Alien.images[0], (32, 32))
@@ -301,7 +305,10 @@ def main():
     pg.mouse.set_visible(0)
 
     # create the background, tile the bgd image
-    background_tile = load_image("background.png")
+    if GAME_STATE.screenMode == ScreenMode.GAME_BIG:
+        background_tile = load_image("background_game_big_normal.png")
+    elif GAME_STATE.screenMode == ScreenMode.SCORE_GAME_BUTTONS:
+        background_tile = load_image("background_score_game_buttons.png")
     background = pg.Surface(GAME_STATE.SCREEN_RECT.size)
     GAME_STATE.GAME_BACKGROUND = background
     for x in range(0, GAME_STATE.SCREEN_RECT.width, background_tile.get_width()):
@@ -322,18 +329,39 @@ def main():
     # initialize our starting sprites
     GAME_STATE.PLAYER = Player(GAME_STATE, game_sprites)
 
-    # right/left buttons
-    # noinspection PyTypeChecker
-    ButtonIcon(810, 330, [load_image(im, "buttons32") for im in ("button_blue_left.png", "button_blue_left_pressed.png")], (game_ui_sprites, game_sprites)).frame = 24 # offset button animations a bit
-    # noinspection PyTypeChecker
-    ButtonIcon(860, 330, [load_image(im, "buttons32") for im in ("button_blue_right.png", "button_blue_right_pressed.png")], (game_ui_sprites, game_sprites))
-    # noinspection PyTypeChecker
-    ButtonIcon(780, 370, [load_image(im, "buttons32") for im in ("button_yellow.png", "button_yellow_pressed.png")], (game_ui_sprites, game_sprites)).frame = 12
+    if GAME_STATE.screenMode == ScreenMode.GAME_BIG:
+        # right/left buttons
+        # noinspection PyTypeChecker
+        ButtonIcon(810, 330, [load_image(im, "buttons32") for im in ("button_blue_left.png", "button_blue_left_pressed.png")], (game_ui_sprites, game_sprites)).frame = 24 # offset button animations a bit
+        # noinspection PyTypeChecker
+        ButtonIcon(860, 330, [load_image(im, "buttons32") for im in ("button_blue_right.png", "button_blue_right_pressed.png")], (game_ui_sprites, game_sprites))
+        # noinspection PyTypeChecker
+        ButtonIcon(780, 370, [load_image(im, "buttons32") for im in ("button_yellow.png", "button_yellow_pressed.png")], (game_ui_sprites, game_sprites)).frame = 12
 
-    # noinspection PyTypeChecker
-    ButtonIcon(750, 620, [load_image(im, "buttons32") for im in ("button_black_right.png", "button_black_right_pressed.png")], (end_ui_sprites, game_sprites)).frame = 24
-    # noinspection PyTypeChecker
-    ButtonIcon(750, 670, [load_image(im, "buttons32") for im in ("button_black_left.png", "button_black_left_pressed.png")], (end_ui_sprites, game_sprites))
+        # noinspection PyTypeChecker
+        ButtonIcon(750, 620, [load_image(im, "buttons32") for im in ("button_black_right.png", "button_black_right_pressed.png")], (end_ui_sprites, game_sprites)).frame = 24
+        # noinspection PyTypeChecker
+        ButtonIcon(750, 670, [load_image(im, "buttons32") for im in ("button_black_left.png", "button_black_left_pressed.png")], (end_ui_sprites, game_sprites))
+    elif GAME_STATE.screenMode == ScreenMode.SCORE_GAME_BUTTONS:
+        # gamepad buttons from back to front
+        # noinspection PyTypeChecker
+        ButtonIcon(960, 449, [load_image(im, "buttons32") for im in ("button_blue_up.png", "button_blue_up_pressed.png")], (game_ui_sprites, game_sprites))
+        # noinspection PyTypeChecker
+        ButtonIcon(1020, 449, [load_image(im, "buttons32") for im in ("button_white.png", "button_white_pressed.png")], (end_ui_sprites, game_sprites))
+        # noinspection PyTypeChecker
+        ButtonIcon(1055, 449, [load_image(im, "buttons32") for im in ("button_black.png", "button_black_pressed.png")], (end_ui_sprites, game_sprites)).frame = 24
+
+        # noinspection PyTypeChecker
+        ButtonIcon(934, 464, [load_image(im, "buttons32") for im in ("button_blue_left.png", "button_blue_left_pressed.png")],(game_ui_sprites, game_sprites)).frame = 6
+        # noinspection PyTypeChecker
+        ButtonIcon(983, 464, [load_image(im, "buttons32") for im in ("button_blue_right.png", "button_blue_right_pressed.png")],(game_ui_sprites, game_sprites)).frame = 12
+        # noinspection PyTypeChecker
+        ButtonIcon(1146, 464, [load_image(im, "buttons32") for im in ("button_red.png", "button_red_pressed.png")],(game_ui_sprites, game_sprites))
+
+        # noinspection PyTypeChecker
+        ButtonIcon(954, 481, [load_image(im, "buttons32") for im in ("button_blue_down.png", "button_blue_down_pressed.png")],(game_ui_sprites, game_sprites)).frame = 24
+        # noinspection PyTypeChecker
+        ButtonIcon(1120, 481, [load_image(im, "buttons32") for im in ("button_yellow.png", "button_yellow_pressed.png")],(game_ui_sprites, game_sprites)).frame = 6
 
     leds = LedHandler(GAME_CONFIG)
     GAME_STATE.LED_HANDLER = leds
@@ -343,18 +371,30 @@ def main():
 
     if pg.font:
         score_points = UiText(game_sprites)
-        score_points.targetRect = Rect(905,445, 335, 50)
-        score_points.font = pg.font.Font(None, 56)
+        if GAME_STATE.screenMode == ScreenMode.GAME_BIG:
+            score_points.targetRect = Rect(905,445, 335, 50)
+            score_points.font = pg.font.Font(None, 56)
+        elif GAME_STATE.screenMode == ScreenMode.SCORE_GAME_BUTTONS:
+            score_points.targetRect = Rect(25, 30, 800, 355)
+            score_points.font = pg.font.Font(None, 550)
         score_points.color = "#FFC000"
         score_points.align = 0
         GAME_STATE.SCORE_POINTS = score_points
 
         score_stats = UiText(game_sprites)
-        score_stats.targetRect = Rect(739,515, 510, 50)
+        if GAME_STATE.screenMode == ScreenMode.GAME_BIG:
+            score_stats.targetRect = Rect(739,515, 510, 50)
+        elif GAME_STATE.screenMode == ScreenMode.SCORE_GAME_BUTTONS:
+            score_stats.targetRect = Rect(25, 400, 350, 75)
+            score_stats.font = pg.font.Font(None, 36)
         GAME_STATE.SCORE_STATS = score_stats
 
         score_missed = UiText(game_sprites)
-        score_missed.targetRect = Rect(739,550, 510, 50)
+        if GAME_STATE.screenMode == ScreenMode.GAME_BIG:
+            score_missed.targetRect = Rect(739,550, 510, 50)
+        elif GAME_STATE.screenMode == ScreenMode.SCORE_GAME_BUTTONS:
+            score_missed.targetRect = Rect(400, 400, 350, 75)
+            score_missed.font = pg.font.Font(None, 36)
         score_missed.color = "grey"
         GAME_STATE.SCORE_MISSED = score_missed
 
@@ -411,10 +451,13 @@ def main():
     pg.time.wait(1000)
 
 def re_render_background():
-    if GAME_CONFIG.COLUMNS == 3:
-        background_tile = load_image("backgroundB.png")
-    else:
-        background_tile = load_image("background.png")
+    if GAME_STATE.screenMode == ScreenMode.GAME_BIG:
+        if GAME_CONFIG.COLUMNS == 3:
+            background_tile = load_image("background_game_big_easy.png")
+        else:
+            background_tile = load_image("background_game_big_normal.png")
+    elif GAME_STATE.screenMode == ScreenMode.SCORE_GAME_BUTTONS:
+        background_tile = load_image("background_score_game_buttons.png")
 
     background = pg.Surface(GAME_STATE.SCREEN_RECT.size)
     for x in range(0, GAME_STATE.SCREEN_RECT.width, background_tile.get_width()):

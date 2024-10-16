@@ -1,7 +1,7 @@
 import pygame as pg
 from pygame import Rect
 
-from config.gameconfig import GameConfig
+from config.gameconfig import GameConfig, ScreenMode
 from config.gamevisualizationconfig import GameVisualizationConfig
 
 class GameState:
@@ -53,11 +53,22 @@ class GameState:
         self.config.COLUMNS = new_columns
 
         if self.config.COLUMNS == 3:
-            self.vizConfig.vizRects = self.vizConfig.vizRects3
             self.LED_HANDLER.ledSegmentMap = self.LED_HANDLER.ledSegmentMap3
         else:
-            self.vizConfig.vizRects = self.vizConfig.vizRects6
             self.LED_HANDLER.ledSegmentMap = self.LED_HANDLER.ledSegmentMap6
+
+        if self.screenMode == ScreenMode.GAME_BIG:
+            if self.config.COLUMNS == 3:
+                self.vizConfig.vizRects = self.vizConfig.vizRects3B
+            else:
+                self.vizConfig.vizRects = self.vizConfig.vizRects6B
+            self.vizConfig.vizGoatRects = self.vizConfig.vizGoatRectsB
+        elif self.screenMode == ScreenMode.SCORE_GAME_BUTTONS:
+            if self.config.COLUMNS == 3:
+                self.vizConfig.vizRects = self.vizConfig.vizRects3S
+            else:
+                self.vizConfig.vizRects = self.vizConfig.vizRects6S
+            self.vizConfig.vizGoatRects = self.vizConfig.vizGoatRectsS
 
         self.LED_HANDLER.reset()
         self.PLAYER.reset()
@@ -73,4 +84,5 @@ class GameState:
     def __init__(self, conf: GameConfig, visualization_config: GameVisualizationConfig):
         self.config = conf
         self.vizConfig = visualization_config
+        self.screenMode = conf.DEFAULT_SCREEN_MODE
         self.OnResetGame = None
