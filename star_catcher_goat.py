@@ -328,6 +328,8 @@ def main():
 
     # initialize our starting sprites
     GAME_STATE.PLAYER = Player(GAME_STATE, game_sprites)
+    # todo: nicer:
+    GAME_STATE.PLAYER.triggerControllerSoundCallback = trigger_controller_sound;
 
     if GAME_STATE.screenMode == ScreenMode.GAME_BIG:
         # right/left buttons

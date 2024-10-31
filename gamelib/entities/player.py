@@ -141,7 +141,7 @@ class Player(pg.sprite.Sprite):
                 self.starsCatchedHorn += 1
                 self.HornGlow()
                 if self.gamestate.CONTROLLER_PLAY_CATCH_SOUND:
-                    triggerControllerSound("twinkle"); # note: blocks receiving controller data
+                    self.triggerControllerSound("twinkle"); 
                 #print(f"Catching Star: x:{star.gridPosX} y:{star.gridPosX}")
                 star.kill()
         return
@@ -151,12 +151,16 @@ class Player(pg.sprite.Sprite):
             self.starsCatchedHorn += 1
             self.HornGlow()
             if self.gamestate.CONTROLLER_PLAY_CATCH_SOUND:
-                triggerControllerSound("point") # note: blocks receiving controller data
+                self.triggerControllerSound("point")
             return True
         elif star.gridPosX == self.ButtColumn:
             self.starsCatchedButt += 1
             self.BodyGlow()
             if self.gamestate.CONTROLLER_PLAY_CATCH_SOUND:
-                triggerControllerSound("point") # note: blocks recevingin controller data
+                self.triggerControllerSound("point")
             return True
         return False
+
+    def triggerControllerSound(self, sound_name):
+        if self.triggerControllerSoundCallback != None:
+            self.triggerControllerSoundCallback(sound_name); # note: blocks receiving controller data
