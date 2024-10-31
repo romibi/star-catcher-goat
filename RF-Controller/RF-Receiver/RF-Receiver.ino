@@ -166,6 +166,7 @@ void loop() {
       char cmddata[str_len];
       command.toCharArray(cmddata, str_len);
 
+      //if (!rf69_manager.sendtoWait(cmddata, sizeof(cmddata), DEST_ADDRESS)) {
       if (!rf69_manager.sendto(cmddata, sizeof(cmddata), DEST_ADDRESS)) {
         Serial.println("RFM69 Sending failed (no ack)");
       }
