@@ -10,16 +10,16 @@
 #define RFM69_RST   4
 //#define LED        13 // use LED_BUILTIN instead
 
-#define BTN_R 5
-#define BTN_Y 6
-#define BTN_START A0
-#define BTN_SELECT A1
-#define BTN_UP A2
+#define BTN_R 9
+#define BTN_Y 10
+#define BTN_START 11
+#define BTN_SELECT 12
+#define BTN_UP A4
 #define BTN_RIGHT A3
-#define BTN_LEFT A4
-#define BTN_DOWN A5
+#define BTN_LEFT A2
+#define BTN_DOWN A1
 
-#define BUZZER 11
+#define BUZZER A0
 
 // ============
 // Constants RF
