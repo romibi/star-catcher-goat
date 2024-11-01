@@ -11,7 +11,7 @@ import serial.tools.list_ports
 from config.gameconfig import GameConfig, ScreenMode
 from config.gamevisualizationconfig import GameVisualizationConfig
 from config.buttonconfig import *
-from gamelib.data_helper_functions import load_image
+from gamelib.data_helper_functions import load_image, load_font
 
 from gamelib.gamestate import GameState
 from gamelib.ledhandler import LedHandler
@@ -78,6 +78,7 @@ def init_recording():
         "rows": GAME_CONFIG.ROWS
     }
     RECORDING = {
+        "player_name": "",
         "seed": time.time(),
         "movements": [],
         "game_version": CURRENT_GAME_VERSION,
@@ -104,6 +105,9 @@ def apply_recording_settings():
         if "rows" in settings: GAME_CONFIG.ROWS = settings["rows"]
         if "columns" in settings:
             GAME_CONFIG.COLUMNS = settings["columns"]
+    if "player_name" in RECORDING:
+        GAME_STATE.PLAYER_NAME = RECORDING["player_name"]
+
 
 def save_recording(points=None):
     try:
@@ -111,9 +115,15 @@ def save_recording(points=None):
         game_mode = ""
         if RECORDING["settings"]["columns"] == 3:
             game_mode = "_easy"
+        name = RECORDING["player_name"]
+
         filename = os.path.join(main_dir, "recordings", f"recording_{filedate}{game_mode}.pickle")
-        if points:
+        if points and len(name)>0:
+            filename = os.path.join(main_dir, "recordings", f"recording_{filedate}{game_mode}_{name}_{points}.pickle")
+        elif points:
             filename = os.path.join(main_dir, "recordings", f"recording_{filedate}{game_mode}_{points}.pickle")
+        elif len(name)>0:
+            filename = os.path.join(main_dir, "recordings", f"recording_{filedate}{game_mode}_{name}.pickle")
 
         filename_last = os.path.join(main_dir, "recordings", f"recording_last{game_mode}.pickle")
 
@@ -193,6 +203,7 @@ def trigger_controller_sound(name):
     if GAME_STATE.CONTROLLER_COM:
         GAME_STATE.CONTROLLER_COM.write(bytes(f"play {name}", 'utf-8'))
         GAME_STATE.CONTROLLER_COM.flush()
+
 
 def get_buttons_from_serial():
     result = []
@@ -346,10 +357,10 @@ def main():
         score_points = UiText(game_sprites)
         if GAME_STATE.screenMode == ScreenMode.GAME_BIG:
             score_points.targetRect = Rect(905,445, 335, 50)
-            score_points.font = pg.font.Font(None, 56)
+            score_points.font = load_font(56)
         elif GAME_STATE.screenMode == ScreenMode.SCORE_GAME_BUTTONS:
-            score_points.targetRect = Rect(25, 30, 800, 355)
-            score_points.font = pg.font.Font(None, 550)
+            score_points.targetRect = Rect(25, -96, 800, 355)
+            score_points.font = load_font(552, "PixelOperator.ttf")
         score_points.color = "#FFC000"
         score_points.align = 0
         GAME_STATE.SCORE_POINTS = score_points
@@ -359,15 +370,15 @@ def main():
             score_stats.targetRect = Rect(739,515, 510, 50)
         elif GAME_STATE.screenMode == ScreenMode.SCORE_GAME_BUTTONS:
             score_stats.targetRect = Rect(25, 400, 350, 75)
-            score_stats.font = pg.font.Font(None, 36)
+            score_stats.font = load_font(36)
         GAME_STATE.SCORE_STATS = score_stats
 
         score_missed = UiText(game_sprites)
         if GAME_STATE.screenMode == ScreenMode.GAME_BIG:
             score_missed.targetRect = Rect(739,550, 510, 50)
         elif GAME_STATE.screenMode == ScreenMode.SCORE_GAME_BUTTONS:
-            score_missed.targetRect = Rect(400, 400, 350, 75)
-            score_missed.font = pg.font.Font(None, 36)
+            score_missed.targetRect = Rect(25, 440, 350, 75)
+            score_missed.font = load_font(36)
         score_missed.color = "grey"
         GAME_STATE.SCORE_MISSED = score_missed
 
@@ -386,7 +397,7 @@ def main():
     # reset before first loop to have same random starting condition as in replay
     GAME_STATE.reset(6)
 
-    GAME_STATE.CURRENT_MENU = MENU_FACTORY.StartMenu();
+    GAME_STATE.CURRENT_MENU = MENU_FACTORY.StartMenu()
 
     # Run our main loop whilst the player is alive.
     while GAME_STATE.PLAYER.alive() and not GAME_STATE.GAME_QUIT:
@@ -524,7 +535,7 @@ def play_loop(serial_keys):
     if GAME_CONFIG.COLUMNS == 3:
         score_stats.text = f"Gefangen: {player.starsCatchedHorn}"
     else:
-        score_stats.text = f"Gefangen: (Horn/Total): {player.starsCatchedHorn}/{player.starsCatchedHorn+player.starsCatchedButt}"
+        score_stats.text = f"Gefangen: {player.starsCatchedHorn+player.starsCatchedButt} (Mit Hörner: {player.starsCatchedHorn})"
 
     score_missed.text = f"Verpasst: {GAME_STATE.StarsMissed}"
 
@@ -536,8 +547,9 @@ def play_loop(serial_keys):
             sprite.paused = GAME_STATE.FRAME_COUNT != GAME_CONFIG.END_FRAME_COUNT
 
     if (GAME_STATE.FRAME_COUNT == GAME_CONFIG.END_FRAME_COUNT) and (not GAME_STATE.REPLAY):
-        # todo: Add Hi-Score Name enter screen and Hi-Score list
-        save_recording(points)
+        def update_and_save_recording():
+            RECORDING["player_name"] = GAME_STATE.PLAYER_NAME
+            save_recording(points)
         if random.randint(0,10) > 7:
           trigger_controller_sound("chest")
         else:
@@ -546,7 +558,7 @@ def play_loop(serial_keys):
         score_missed.text = ""
         score_stats.text = ""
         re_render_background()
-        GAME_STATE.CURRENT_MENU = MENU_FACTORY.StartMenu()
+        GAME_STATE.CURRENT_MENU = MENU_FACTORY.NameEntry(update_and_save_recording)
 
     # re-draw whole background
     if GAME_STATE.MENU_JUST_CLOSED:

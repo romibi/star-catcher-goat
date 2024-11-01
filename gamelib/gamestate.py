@@ -26,6 +26,8 @@ class GameState:
 
     LED_HANDLER = None
 
+    PLAYER_NAME = ""
+
     PLAYER = None
     STARS = pg.sprite.Group()
 

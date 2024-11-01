@@ -2,6 +2,7 @@ from enum import Enum
 
 # ScreenModeElements = Enum('ScreenModeElements', ['GAME_VIEW', 'GAME_VIEW_SMALL', 'HISCORE', 'BUTTON_VIEW'])
 class ScreenMode(Enum):
+    # todo: fix GAME_BIG mode
     GAME_BIG = 1
     SCORE_GAME_BUTTONS_HIGHSCORES = 2
     SCORE_GAME_BUTTONS = 3
@@ -29,7 +30,7 @@ class GameConfig:
     DEFAULT_SCREEN_MODE: ScreenMode
 
     def __init__(self):
-        self.DEFAULT_SCREEN_MODE = ScreenMode.GAME_BIG
+        self.DEFAULT_SCREEN_MODE = ScreenMode.SCORE_GAME_BUTTONS
         self.reset()
 
     def reset(self):

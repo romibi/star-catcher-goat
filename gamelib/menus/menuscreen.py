@@ -34,39 +34,38 @@ class MenuScreen:
             self.background.blit(overlay_bg, (0, 0))
 
     def _close_menu(self):
-        self.gamestate.CURRENT_MENU = False
+        self.gamestate.CURRENT_MENU = None
         self.gamestate.MENU_JUST_CLOSED = True
 
 
+    def handle_key(self, key):
+        if key in BUTTONS_MENU_CLOSE:
+            self._close_menu()
+            return True
+        if key in BUTTONS_MENU_DOWN:
+            self.cursorIndex = min(self.cursorIndex + 1, len(self.menuOptionMap.keys()) - 1)
+            self.cursor.targetRect = Rect(50, 100 + (self.cursorIndex * 50), 64, 64)
+        if key in BUTTONS_MENU_UP:
+            self.cursorIndex = max(self.cursorIndex - 1, 0)
+            self.cursor.targetRect = Rect(50, 100 + (self.cursorIndex * 50), 64, 64)
+        if key in BUTTONS_MENU_CONFIRM + BUTTONS_MENU_LEFT + BUTTONS_MENU_RIGHT + BUTTONS_MENU_DENY:
+            menu_functions = list(self.menuOptionMap.values())
+            menu_functions[self.cursorIndex](key)
+        return False
+
+
     def loop(self, serial_keys):
-
-        # noinspection PyShadowingNames
-        def handle_key(key):
-            if key in BUTTONS_MENU_CLOSE:
-                self._close_menu()
-                return True
-            if key in BUTTONS_MENU_DOWN:
-                self.cursorIndex = min(self.cursorIndex+1, len(self.menuOptionMap.keys())-1)
-                self.cursor.targetRect = Rect(50, 100+(self.cursorIndex*50), 64, 64)
-            if key in BUTTONS_MENU_UP:
-                self.cursorIndex = max(self.cursorIndex-1, 0)
-                self.cursor.targetRect = Rect(50, 100+(self.cursorIndex*50), 64, 64)
-            if key in BUTTONS_MENU_CONFIRM + BUTTONS_MENU_LEFT + BUTTONS_MENU_RIGHT + BUTTONS_MENU_DENY:
-                menu_functions = list(self.menuOptionMap.values())
-                menu_functions[self.cursorIndex](key)
-            return False
-
         self.frame += 1
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 self.gamestate.GAME_QUIT = True
                 return
             if event.type == pg.KEYDOWN:
-                if handle_key(event.key):
+                if self.handle_key(event.key):
                     return
 
         for key in serial_keys:
-            if handle_key(key):
+            if self.handle_key(key):
                 return
 
         if self.frame == 0:

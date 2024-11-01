@@ -29,3 +29,8 @@ def load_sound(file):
     except pg.error:
         print(f"Warning, unable to load, {file}")
     return None
+
+def load_font(size, font_name="PixelOperator-Bold.ttf"):
+    """Loads the game default font in the requested size"""
+    file = os.path.join(main_dir, "data", "fonts", font_name)
+    return pg.font.Font(file, size)

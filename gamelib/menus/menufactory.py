@@ -5,6 +5,7 @@ from config.buttonconfig import *
 
 from gamelib.gamestate import GameState
 from gamelib.menus.menuscreen import MenuScreen
+from gamelib.menus.nameentryscreen import NameEntryScreen
 from gamelib.menus.startmenuscreen import StartMenuScreen
 
 
@@ -195,3 +196,6 @@ class MenuFactory:
 
     def StartMenu(self):
         return StartMenuScreen(self.gamestate)
+
+    def NameEntry(self, confirm_callback):
+        return NameEntryScreen(self.gamestate, confirm_callback, self.StartMenu())
