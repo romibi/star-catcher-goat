@@ -11,6 +11,7 @@ import serial.tools.list_ports
 from config.gameconfig import GameConfig, ScreenMode
 from config.gamevisualizationconfig import GameVisualizationConfig
 from config.buttonconfig import *
+# todo: load_font is "unused" but used below??
 from gamelib.data_helper_functions import load_image, load_font
 
 from gamelib.gamestate import GameState
@@ -20,6 +21,8 @@ from gamelib.entities.player import Player
 
 from gamelib.menus.menufactory import MenuFactory
 from gamelib.uielements import *
+
+# todo: fix warnings
 
 # see if we can load more than standard BMP
 if not pg.image.get_extended():
@@ -311,7 +314,7 @@ def main():
     # initialize our starting sprites
     GAME_STATE.PLAYER = Player(GAME_STATE, game_sprites)
     # todo: nicer:
-    GAME_STATE.PLAYER.triggerControllerSoundCallback = trigger_controller_sound;
+    GAME_STATE.PLAYER.triggerControllerSoundCallback = trigger_controller_sound
 
     if GAME_STATE.screenMode == ScreenMode.GAME_BIG:
         # right/left buttons

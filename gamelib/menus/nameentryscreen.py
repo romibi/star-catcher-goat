@@ -1,13 +1,11 @@
-import pygame as pg
 from pygame import Rect
-from select import select
 
 from config.buttonconfig import BUTTONS_MENU_DOWN, BUTTONS_MENU_UP, BUTTONS_MENU_LEFT, BUTTONS_MENU_RIGHT, \
     BUTTONS_MENU_CONFIRM, BUTTONS_MENU_DENY
 from gamelib.data_helper_functions import load_image, load_font
 from gamelib.gamestate import GameState
 from gamelib.menus.menuscreen import MenuScreen
-from gamelib.uielements import UiText, ButtonIcon, ImageIcon
+from gamelib.uielements import UiText, ImageIcon
 
 
 class NameEntryScreen(MenuScreen):
@@ -70,29 +68,29 @@ class NameEntryScreen(MenuScreen):
         if len(self.name)>=10:
             return False
 
-        newChar = ""
-        if (self.selector_y==0):
-            newChar = chr(65+self.selector_x)
-        elif (self.selector_y==1):
-            newChar = chr(78+self.selector_x)
+        new_char = ""
+        if self.selector_y == 0:
+            new_char = chr(65 + self.selector_x)
+        elif self.selector_y == 1:
+            new_char = chr(78 + self.selector_x)
         else:
             if self.selector_x == 0:
-                newChar = "Ä"
+                new_char = "Ä"
             elif self.selector_x == 1:
-                newChar = "Ö"
+                new_char = "Ö"
             elif self.selector_x == 2:
-                newChar  = "Ü"
+                new_char  = "Ü"
             elif self.selector_x == 3:
-                newChar = "À"
+                new_char = "À"
             elif self.selector_x == 4:
-                newChar = "É"
+                new_char = "É"
             elif self.selector_x == 5:
-                newChar = "È"
+                new_char = "È"
             elif self.selector_x == 6:
-                newChar = "."
+                new_char = "."
             elif self.selector_x == 7:
-                newChar = "-"
-        self.name = self.name+newChar
+                new_char = "-"
+        self.name = self.name+new_char
         self.update_name_sprite()
         return False
 

@@ -1,4 +1,3 @@
-import pygame as pg
 from pygame import Rect
 
 from config.buttonconfig import SERIAL_BUTTON_START, SERIAL_BUTTON_SELECT

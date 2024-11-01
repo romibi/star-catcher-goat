@@ -6,6 +6,8 @@ from pygame import Rect
 from config.gameconfig import ScreenMode
 from gamelib.gamestate import GameState
 
+# todo: fix warnings
+
 class Player(pg.sprite.Sprite):
 
     images: List[pg.Surface] = []
@@ -25,7 +27,8 @@ class Player(pg.sprite.Sprite):
         self.reloading = 0
         self.origtop = self.rect.top
         self.updateImage()
-        # todo: possible to remove hack?
+        # todo: possible to remove hacks?
+        self.triggerControllerSoundCallback = None
         if not self.gamestate.vizConfig.vizGoatRects:
             if self.gamestate.screenMode == ScreenMode.GAME_BIG:
                 self.gamestate.vizConfig.vizGoatRects = self.gamestate.vizConfig.vizGoatRectsB
@@ -141,7 +144,7 @@ class Player(pg.sprite.Sprite):
                 self.starsCatchedHorn += 1
                 self.HornGlow()
                 if self.gamestate.CONTROLLER_PLAY_CATCH_SOUND:
-                    self.triggerControllerSound("twinkle"); 
+                    self.triggerControllerSound("twinkle")
                 #print(f"Catching Star: x:{star.gridPosX} y:{star.gridPosX}")
                 star.kill()
         return
@@ -162,5 +165,5 @@ class Player(pg.sprite.Sprite):
         return False
 
     def triggerControllerSound(self, sound_name):
-        if self.triggerControllerSoundCallback != None:
-            self.triggerControllerSoundCallback(sound_name); # note: blocks receiving controller data
+        if self.triggerControllerSoundCallback:
+            self.triggerControllerSoundCallback(sound_name) # note: blocks receiving controller data

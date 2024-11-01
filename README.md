@@ -36,8 +36,8 @@ fi
 - TODO list materials
 
 ## Notes:
-At some point i also did these stepps:
+At some point I also did these steps:
 - `pip install rpi-rf`
 - `pip uninstall rpi-gpio` (buggy on bookworm)
 - `pip install rpi-lgpio` (works instead on bookworm)
-But as i switched to a different RF module (the ones included in the feather modules) this should not be needed anymore
+But as I switched to a different RF module (the ones included in the feather modules) this should not be needed anymore

@@ -181,6 +181,7 @@ class MenuFactory:
     def _toggle_controller_sound(self, key):
         self.gamestate.CONTROLLER_PLAY_CATCH_SOUND = not self.gamestate.CONTROLLER_PLAY_CATCH_SOUND
 
+    # todo: maybe fix warnings
 
     def FullMenu(self): # noqa
         return MenuScreen(self.gamestate,
@@ -194,8 +195,10 @@ class MenuFactory:
              "Spiel Beenden": self._quit_game
              })
 
+
     def StartMenu(self):
         return StartMenuScreen(self.gamestate)
+
 
     def NameEntry(self, confirm_callback):
         return NameEntryScreen(self.gamestate, confirm_callback, self.StartMenu())

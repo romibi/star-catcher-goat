@@ -4,6 +4,8 @@ from typing import List
 
 from gamelib.gamestate import GameState
 
+# todo: fix warnings
+
 class Star(pg.sprite.Sprite):
 
     gridPosX = 0
@@ -38,7 +40,7 @@ class Star(pg.sprite.Sprite):
             return
 
         catched = False
-        if not player == None:
+        if player:
             catched = player.CatchStarPassive(self)
         if not catched:
             self.gamestate.StarsMissed += 1
