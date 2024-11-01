@@ -5,6 +5,8 @@ from config.buttonconfig import *
 
 from gamelib.gamestate import GameState
 from gamelib.menus.menuscreen import MenuScreen
+from gamelib.menus.startmenuscreen import StartMenuScreen
+
 
 class MenuFactory:
     def __init__(self, state: GameState):
@@ -190,3 +192,6 @@ class MenuFactory:
              "Neues Spiel (Einfach)": self._reset3,
              "Spiel Beenden": self._quit_game
              })
+
+    def StartMenu(self):
+        return StartMenuScreen(self.gamestate)

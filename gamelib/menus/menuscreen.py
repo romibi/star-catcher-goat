@@ -5,7 +5,7 @@ from gamelib.uielements import *
 from gamelib.gamestate import GameState
 
 class MenuScreen:
-    def __init__(self, state: GameState, menu_optionmap):
+    def __init__(self, state: GameState, menu_optionmap, darken_bg=True):
         self.gamestate = state
         self.screen = state.GAME_SCREEN
         self.background = self.screen.copy()
@@ -28,14 +28,14 @@ class MenuScreen:
 
         self.frame = -1
 
-        overlay_bg = pg.Surface(self.gamestate.SCREEN_RECT.size, pg.SRCALPHA, 32)
-        overlay_bg.fill((0,0,0, 150))
-        self.background.blit(overlay_bg, (0, 0))
+        if darken_bg:
+            overlay_bg = pg.Surface(self.gamestate.SCREEN_RECT.size, pg.SRCALPHA, 32)
+            overlay_bg.fill((0,0,0, 150))
+            self.background.blit(overlay_bg, (0, 0))
 
     def _close_menu(self):
         self.gamestate.CURRENT_MENU = False
         self.gamestate.MENU_JUST_CLOSED = True
-
 
 
     def loop(self, serial_keys):

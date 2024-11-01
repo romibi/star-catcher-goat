@@ -11,6 +11,7 @@ import serial.tools.list_ports
 from config.gameconfig import GameConfig, ScreenMode
 from config.gamevisualizationconfig import GameVisualizationConfig
 from config.buttonconfig import *
+from gamelib.data_helper_functions import load_image
 
 from gamelib.gamestate import GameState
 from gamelib.ledhandler import LedHandler
@@ -160,36 +161,6 @@ def replay(recording):
     random.seed(RECORDING["seed"])
 
 #### END RECORDING STUFF #########################################################
-
-
-# helper functions
-def load_image(file, subfolder=None):
-    """loads an image, prepares it for play"""
-    if subfolder:
-        file = os.path.join(main_dir, "data", subfolder, file)
-    else:
-        file = os.path.join(main_dir, "data", file)
-
-    try:
-        surface = pg.image.load(file)
-    except pg.error:
-        raise SystemExit(f'Could not load image "{file}" {pg.get_error()}')
-    #surface = surface.convert()
-    return surface.convert_alpha()
-
-
-def load_sound(file):
-    """because pygame can be compiled without mixer."""
-    if not pg.mixer:
-        return None
-    file = os.path.join(main_dir, "data", file)
-    try:
-        sound = pg.mixer.Sound(file)
-        return sound
-    except pg.error:
-        print(f"Warning, unable to load, {file}")
-    return None
-
 
 def spawn_new_star_row(stars, star_groups):
     if GAME_STATE.FRAME_COUNT > GAME_CONFIG.STAR_STOP_SPAWN_FRAME_COUNT:
@@ -415,6 +386,8 @@ def main():
     # reset before first loop to have same random starting condition as in replay
     GAME_STATE.reset(6)
 
+    GAME_STATE.CURRENT_MENU = MENU_FACTORY.StartMenu();
+
     # Run our main loop whilst the player is alive.
     while GAME_STATE.PLAYER.alive() and not GAME_STATE.GAME_QUIT:
         # get currently pressed buttons on serial controller
@@ -569,6 +542,11 @@ def play_loop(serial_keys):
           trigger_controller_sound("chest")
         else:
           trigger_controller_sound("fanfare")
+        score_points.text = ""
+        score_missed.text = ""
+        score_stats.text = ""
+        re_render_background()
+        GAME_STATE.CURRENT_MENU = MENU_FACTORY.StartMenu()
 
     # re-draw whole background
     if GAME_STATE.MENU_JUST_CLOSED:
