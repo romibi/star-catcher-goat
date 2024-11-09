@@ -50,7 +50,8 @@ class MenuScreen:
             self.cursor.targetRect = Rect(50, 100 + (self.cursorIndex * 50), 64, 64)
         if key in BUTTONS_MENU_CONFIRM + BUTTONS_MENU_LEFT + BUTTONS_MENU_RIGHT + BUTTONS_MENU_DENY:
             menu_functions = list(self.menuOptionMap.values())
-            menu_functions[self.cursorIndex](key)
+            if (self.cursorIndex >= 0) and (len(menu_functions) > self.cursorIndex):
+                menu_functions[self.cursorIndex](key)
         return False
 
 

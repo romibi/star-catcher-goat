@@ -5,6 +5,7 @@ import random
 import time
 import subprocess
 import pickle
+from datetime import datetime
 from fileinput import filename
 
 import serial
@@ -66,7 +67,9 @@ def load_highscores(name):
 
         with open(filename, "rb") as f:
             print(f"Loading {filename}")
-            return pickle.load(f)
+            highscores = pickle.load(f)
+            f.close()
+            return highscores
 
     except Exception as ex:
         print("Error during pickling object (Possibly unsupported):", ex)
@@ -91,6 +94,7 @@ def persist_highscores(name, highscores):
         with open(filename, "wb") as f:
             # noinspection PyTypeChecker
             pickle.dump(highscores, f, protocol=pickle.HIGHEST_PROTOCOL)
+            f.close()
             print(f"Saved {filename}")
     except Exception as ex:
         print("Error during pickling object (Possibly unsupported):", ex)
@@ -106,7 +110,7 @@ def add_highscore(points, name, mode, recording_filename):
     if mode == "easy":
         highscores = HIGHSCORES_EASY
 
-    highscores += [{"points": points, "name": name, "timestamp":  time.strftime("%d.%m.%Y %H:%M:%S"), "recording_filename": recording_filename}]
+    highscores += [{"points": points, "name": name, "timestamp":  datetime.now(), "recording_filename": recording_filename}]
     highscores.sort(key=lambda entry: entry["points"], reverse=True)
 
     if mode == "easy":
@@ -199,11 +203,13 @@ def save_recording(points=None):
         with open(filename_last, "wb") as f:
             # noinspection PyTypeChecker
             pickle.dump(RECORDING, f, protocol=pickle.HIGHEST_PROTOCOL)
+            f.close()
             print(f"Saved {filename_last}")
 
         with open(filename_full, "wb") as f:
             # noinspection PyTypeChecker
             pickle.dump(RECORDING, f, protocol=pickle.HIGHEST_PROTOCOL)
+            f.close()
             print(f"Saved {filename_full}")
     except Exception as ex:
         print("Error during pickling object (Possibly unsupported):", ex)
@@ -221,6 +227,7 @@ def load_last_recording():
 
         with open(filename, "rb") as f:
             RECORDING = pickle.load(f)
+            f.close()
             print(f"Loaded {filename}")
 
         if RECORDING["game_version"] != CURRENT_GAME_VERSION:
@@ -447,8 +454,9 @@ def main():
         if GAME_STATE.screenMode == ScreenMode.GAME_BIG:
             score_missed.targetRect = Rect(739,550, 510, 50)
         elif GAME_STATE.screenMode == ScreenMode.SCORE_GAME_BUTTONS:
-            score_missed.targetRect = Rect(25, 440, 350, 75)
+            score_missed.targetRect = Rect(400, 400, 350, 75)
             score_missed.font = load_font(36)
+            score_missed.align = 1
         score_missed.color = "grey"
         GAME_STATE.SCORE_MISSED = score_missed
 
@@ -508,6 +516,45 @@ def main():
         pg.mixer.music.fadeout(1000)
     pg.time.wait(1000)
 
+def render_highscores():
+    # todo: change between normal/easy highscore list on start screen after some time
+    mode = "normal"
+    mode_text = "Normales Spiel"
+    if GAME_CONFIG.COLUMNS == 3:
+        mode = "easy"
+        mode_text = "Einfaches Spiel"
+    font = load_font(28)
+    font_mono = load_font(28, "PixelOperatorMono.ttf")
+    highscores = f"HIGHSCORES ({mode_text}):"
+    text = font.render(highscores, True, Color(255, 255, 255))
+    textRect = text.get_rect()
+    textRect.left = 25
+    textRect.top = 445
+    GAME_STATE.GAME_SCREEN.blit(text, textRect)
+
+    y = 447
+    highscores = HIGHSCORES_NORMAL
+    if mode == "easy":
+        highscores = HIGHSCORES_EASY
+    if highscores:
+        for place in range(10):
+            y += 24
+            if len(highscores)>place:
+                entry = highscores[place]
+                name = entry['name']
+                if name == '':
+                    name = 'Unbekannt'
+                highscoretext = f"{place+1: >2}. {entry['points']: >4} Punkte: {name: <10} am {entry['timestamp'].strftime('%d.%m.%Y %H:%M')}"
+            else:
+                highscoretext = f"{place+1: >2}.    0 Punkte: .........."
+
+            text = font_mono.render(highscoretext, True, Color(255, 255, 255))
+            textRect = text.get_rect()
+            textRect.left = 25
+            textRect.top = y
+
+            GAME_STATE.GAME_SCREEN.blit(text, textRect)
+
 def re_render_background():
     mode = "normal"
     if GAME_CONFIG.COLUMNS == 3:
@@ -522,30 +569,7 @@ def re_render_background():
         background.blit(background_tile, (x, 0))
     GAME_STATE.GAME_SCREEN.blit(background, (0, 0))
 
-    # todo: move out in separate method
-    font = load_font(28)
-    highscores = "HIGHSCORES:"
-    text = font.render(highscores, True, Color(255, 255, 255))
-    textRect = text.get_rect()
-    textRect.left = 25
-    textRect.top = 475
-    GAME_STATE.GAME_SCREEN.blit(text, textRect)
-
-    y = 500
-    highscores = HIGHSCORES_NORMAL
-    if mode == "easy":
-        highscores = HIGHSCORES_EASY
-    if highscores:
-        for entry in highscores:
-            y += 25
-            highscoretext = f"{entry['points']} Punkte: {entry['name']} am {entry['timestamp']}"
-
-            text = font.render(highscoretext, True, Color(255,255,255))
-            textRect = text.get_rect()
-            textRect.left = 25
-            textRect.top = y
-
-            GAME_STATE.GAME_SCREEN.blit(text, textRect)
+    render_highscores()
 
 
 
@@ -631,11 +655,11 @@ def play_loop(serial_keys):
     score_points.text = f"{points}"
 
     if GAME_CONFIG.COLUMNS == 3:
-        score_stats.text = f"Gefangen: {player.starsCatchedHorn}"
+        score_stats.text = f"Gefangen: {player.starsCatchedHorn: >2}"
     else:
-        score_stats.text = f"Gefangen: {player.starsCatchedHorn+player.starsCatchedButt} (Mit Hörner: {player.starsCatchedHorn})"
+        score_stats.text = f"Gefangen: {player.starsCatchedHorn+player.starsCatchedButt: >2} (Mit Hörner: {player.starsCatchedHorn: >2})"
 
-    score_missed.text = f"Verpasst: {GAME_STATE.StarsMissed}"
+    score_missed.text = f"Verpasst: {GAME_STATE.StarsMissed: >2}"
 
 
     if (GAME_STATE.FRAME_COUNT == 1) or (GAME_STATE.FRAME_COUNT == GAME_CONFIG.END_FRAME_COUNT):
