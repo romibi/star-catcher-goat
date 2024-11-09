@@ -5,8 +5,11 @@ import random
 import time
 import subprocess
 import pickle
+from fileinput import filename
+
 import serial
 import serial.tools.list_ports
+from pygame import Color
 
 from config.gameconfig import GameConfig, ScreenMode
 from config.gamevisualizationconfig import GameVisualizationConfig
@@ -51,6 +54,66 @@ GAME_STATE = GameState(GAME_CONFIG, GAME_VIZ_CONF)
 MENU_FACTORY: MenuFactory
 
 RECORDING = {}
+
+HIGHSCORES_NORMAL = []
+HIGHSCORES_EASY = []
+
+#### HISCORE STUFF ###########################################################
+# todo: move highscore logic (and recordings) out of this file
+def load_highscores(name):
+    try:
+        filename = os.path.join(main_dir, "recordings", name)
+
+        with open(filename, "rb") as f:
+            print(f"Loading {filename}")
+            return pickle.load(f)
+
+    except Exception as ex:
+        print("Error during pickling object (Possibly unsupported):", ex)
+        return []
+
+def load_all_highscores():
+    global HIGHSCORES_NORMAL, HIGHSCORES_EASY
+    HIGHSCORES_NORMAL = load_highscores("highscores.pickle")
+    HIGHSCORES_EASY = load_highscores("highscores_easy.pickle")
+
+
+def persist_highscores(name, highscores):
+    try:
+        filename = os.path.join(main_dir, "recordings", name)
+        filename_bak = f"{filename}.bak"
+
+        if os.path.exists(filename_bak):
+            os.remove(filename_bak)
+        if os.path.exists(filename):
+            os.rename(filename, filename_bak)
+
+        with open(filename, "wb") as f:
+            # noinspection PyTypeChecker
+            pickle.dump(highscores, f, protocol=pickle.HIGHEST_PROTOCOL)
+            print(f"Saved {filename}")
+    except Exception as ex:
+        print("Error during pickling object (Possibly unsupported):", ex)
+
+def persist_all_highscores():
+    persist_highscores("highscores.pickle", HIGHSCORES_NORMAL)
+    persist_highscores("highscores_easy.pickle", HIGHSCORES_EASY)
+
+
+def add_highscore(points, name, mode, recording_filename):
+    global HIGHSCORES_NORMAL, HIGHSCORES_EASY
+    highscores = HIGHSCORES_NORMAL
+    if mode == "easy":
+        highscores = HIGHSCORES_EASY
+
+    highscores += [{"points": points, "name": name, "timestamp":  time.strftime("%d.%m.%Y %H:%M:%S"), "recording_filename": recording_filename}]
+    highscores.sort(key=lambda entry: entry["points"], reverse=True)
+
+    if mode == "easy":
+        HIGHSCORES_EASY = highscores
+    else:
+        HIGHSCORES_NORMAL = highscores
+
 
 #### RECORDING STUFF #########################################################
 # todo: move recording logic out of this file
@@ -113,6 +176,7 @@ def apply_recording_settings():
 
 
 def save_recording(points=None):
+    filename = ""
     try:
         filedate = time.strftime("%Y%m%d-%H%M%S")
         game_mode = ""
@@ -120,13 +184,15 @@ def save_recording(points=None):
             game_mode = "_easy"
         name = RECORDING["player_name"]
 
-        filename = os.path.join(main_dir, "recordings", f"recording_{filedate}{game_mode}.pickle")
+        filename = f"recording_{filedate}{game_mode}.pickle"
         if points and len(name)>0:
-            filename = os.path.join(main_dir, "recordings", f"recording_{filedate}{game_mode}_{name}_{points}.pickle")
+            filename = f"recording_{filedate}{game_mode}_{name}_{points}.pickle"
         elif points:
-            filename = os.path.join(main_dir, "recordings", f"recording_{filedate}{game_mode}_{points}.pickle")
+            filename = f"recording_{filedate}{game_mode}_{points}.pickle"
         elif len(name)>0:
-            filename = os.path.join(main_dir, "recordings", f"recording_{filedate}{game_mode}_{name}.pickle")
+            filename = f"recording_{filedate}{game_mode}_{name}.pickle"
+
+        filename_full = os.path.join(main_dir, "recordings", filename)
 
         filename_last = os.path.join(main_dir, "recordings", f"recording_last{game_mode}.pickle")
 
@@ -135,12 +201,13 @@ def save_recording(points=None):
             pickle.dump(RECORDING, f, protocol=pickle.HIGHEST_PROTOCOL)
             print(f"Saved {filename_last}")
 
-        with open(filename, "wb") as f:
+        with open(filename_full, "wb") as f:
             # noinspection PyTypeChecker
             pickle.dump(RECORDING, f, protocol=pickle.HIGHEST_PROTOCOL)
-            print(f"Saved {filename}")
+            print(f"Saved {filename_full}")
     except Exception as ex:
         print("Error during pickling object (Possibly unsupported):", ex)
+    return filename
 
 
 def load_last_recording():
@@ -397,6 +464,8 @@ def main():
         except: # noqa
             GAME_STATE.CONTROLLER_COM = None
 
+    load_all_highscores()
+
     # reset before first loop to have same random starting condition as in replay
     GAME_STATE.reset(6)
 
@@ -440,11 +509,11 @@ def main():
     pg.time.wait(1000)
 
 def re_render_background():
+    mode = "normal"
+    if GAME_CONFIG.COLUMNS == 3:
+        mode = "easy"
     if GAME_STATE.screenMode == ScreenMode.GAME_BIG:
-        if GAME_CONFIG.COLUMNS == 3:
-            background_tile = load_image("background_game_big_easy.png")
-        else:
-            background_tile = load_image("background_game_big_normal.png")
+        background_tile = load_image(f"background_game_big_{mode}.png")
     elif GAME_STATE.screenMode == ScreenMode.SCORE_GAME_BUTTONS:
         background_tile = load_image("background_score_game_buttons.png")
 
@@ -452,6 +521,32 @@ def re_render_background():
     for x in range(0, GAME_STATE.SCREEN_RECT.width, background_tile.get_width()):
         background.blit(background_tile, (x, 0))
     GAME_STATE.GAME_SCREEN.blit(background, (0, 0))
+
+    # todo: move out in separate method
+    font = load_font(28)
+    highscores = "HIGHSCORES:"
+    text = font.render(highscores, True, Color(255, 255, 255))
+    textRect = text.get_rect()
+    textRect.left = 25
+    textRect.top = 475
+    GAME_STATE.GAME_SCREEN.blit(text, textRect)
+
+    y = 500
+    highscores = HIGHSCORES_NORMAL
+    if mode == "easy":
+        highscores = HIGHSCORES_EASY
+    if highscores:
+        for entry in highscores:
+            y += 25
+            highscoretext = f"{entry['points']} Punkte: {entry['name']} am {entry['timestamp']}"
+
+            text = font.render(highscoretext, True, Color(255,255,255))
+            textRect = text.get_rect()
+            textRect.left = 25
+            textRect.top = y
+
+            GAME_STATE.GAME_SCREEN.blit(text, textRect)
+
 
 
 def play_loop(serial_keys):
@@ -551,8 +646,14 @@ def play_loop(serial_keys):
 
     if (GAME_STATE.FRAME_COUNT == GAME_CONFIG.END_FRAME_COUNT) and (not GAME_STATE.REPLAY):
         def update_and_save_recording():
-            RECORDING["player_name"] = GAME_STATE.PLAYER_NAME
-            save_recording(points)
+            name = GAME_STATE.PLAYER_NAME
+            RECORDING["player_name"] = name
+            filename = save_recording(points)
+            mode = "normal"
+            if RECORDING["settings"]["columns"] == 3:
+                mode = "easy"
+            add_highscore(points, name, mode, filename)
+            persist_all_highscores()
         if random.randint(0,10) > 7:
           trigger_controller_sound("chest")
         else:
