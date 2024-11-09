@@ -3,6 +3,8 @@ from pygame import Rect
 
 from config.gameconfig import GameConfig, ScreenMode
 from config.gamevisualizationconfig import GameVisualizationConfig
+from gamelib.ledhandler import LedHandler
+
 
 class GameState:
     # todo: check what None values could be moved to constructor
@@ -24,7 +26,7 @@ class GameState:
 
     LAST_SERIAL_BUTTONS = []
 
-    LED_HANDLER = None
+    LED_HANDLER: LedHandler | None
 
     PLAYER_NAME = ""
 
@@ -88,3 +90,4 @@ class GameState:
         self.vizConfig = visualization_config
         self.screenMode = conf.DEFAULT_SCREEN_MODE
         self.OnResetGame = None
+        self.LED_HANDLER = None

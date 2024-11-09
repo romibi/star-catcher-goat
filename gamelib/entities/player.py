@@ -12,8 +12,8 @@ class Player(pg.sprite.Sprite):
 
     images: List[pg.Surface] = []
     gridPos = 0
-    hornGlowIntensity = 0
-    bodyGlowIntensity = 0
+    hornGlowIntensity = 0.0
+    bodyGlowIntensity = 0.0
     starsCatchedHorn = 0
     starsCatchedButt = 0
 
@@ -35,6 +35,11 @@ class Player(pg.sprite.Sprite):
             else:
                 self.gamestate.vizConfig.vizGoatRects = self.gamestate.vizConfig.vizGoatRectsS
         self.updateRect()
+
+    @property
+    def led(self):
+        return self.gamestate.LED_HANDLER
+
 
     def reset(self):
         self.starsCatchedHorn = 0
@@ -65,8 +70,28 @@ class Player(pg.sprite.Sprite):
             else:
                 self.image = self.images[1]
 
+
+    def updateLeds(self):
+        body_color = self.led.GOAT_BODY_COLOR_RGB
+        horn_color = self.led.GOAT_HORN_COLOR_RGB
+
+        body_color = body_color.lerp(self.led.GOAT_BODY_COLOR_GLOW_RGB, self.bodyGlowIntensity)
+        horn_color = horn_color.lerp(self.led.GOAT_HORN_COLOR_GLOW_RGB, self.hornGlowIntensity)
+
+        body_color_hex = f'{body_color.r:02x}{body_color.g:02x}{body_color.b:02x}'.upper()
+        horn_color_hex = f'{horn_color.r:02x}{horn_color.g:02x}{horn_color.b:02x}'.upper()
+
+        self.led.set_goat_led(self.viz_pos,self.led.GOAT_BRIGHTNESS, body_color_hex, horn_color_hex)
+        # todo: immediately update goat leds? or later?
+        self.led.update_leds(update_stars=False, update_goats=True) # immediately update goat leds
+
+
+    @property
+    def viz_pos(self):
+        return int(self.gridPos*2)+max(self.facing,0)
+
     def updateRect(self):
-        self.rect = self.gamestate.vizConfig.vizGoatRects[int(self.gridPos*2)+max(self.facing,0)]
+        self.rect = self.gamestate.vizConfig.vizGoatRects[self.viz_pos]
 
     def moveInGrid(self):        
         maxGoatPos = round(self.gamestate.config.COLUMNS/2)-1
@@ -80,9 +105,10 @@ class Player(pg.sprite.Sprite):
 
 
     def update(self):
-        self.hornGlowIntensity = max(self.hornGlowIntensity-1,0)
-        self.bodyGlowIntensity = max(self.bodyGlowIntensity-1,0)
+        self.hornGlowIntensity = max(self.hornGlowIntensity-(1.0/20),0.0)
+        self.bodyGlowIntensity = max(self.bodyGlowIntensity-(1.0/20),0.0)
         self.updateImage()
+        self.updateLeds()
 
 
     def move(self, direction):
@@ -106,30 +132,29 @@ class Player(pg.sprite.Sprite):
 
 
     def HornGlow(self):
-        self.hornGlowIntensity = 20
+        self.hornGlowIntensity = 1.0
         self.updateImage()
 
 
     def BodyGlow(self):
-        self.bodyGlowIntensity = 20
+        self.bodyGlowIntensity = 1.0
         self.updateImage()
 
 
     @property
     def HornGlowing(self):
-        return self.hornGlowIntensity>0
+        return self.hornGlowIntensity>0.001
 
 
     @property
     def BodyGlowing(self):
-        return self.bodyGlowIntensity>0
+        return self.bodyGlowIntensity>0.001
 
     @property
     def HornColumn(self):
         if self.gamestate.config.COLUMNS == 3:
             return self.gridPos
-        return self.gridPos * 2 + max(self.facing,0)
-
+        return self.viz_pos
 
     @property
     def ButtColumn(self):

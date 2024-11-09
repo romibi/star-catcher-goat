@@ -572,7 +572,7 @@ def play_loop(serial_keys):
     
     leds = GAME_STATE.LED_HANDLER
 
-    leds.set_all_leds_off()
+    leds.set_all_leds_off(only_stars=True)
 
     # make stars land on player before update
     for star in stars:
