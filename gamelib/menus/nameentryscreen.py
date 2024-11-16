@@ -7,8 +7,9 @@ from gamelib.gamestate import GameState
 from gamelib.menus.menuscreen import MenuScreen
 from gamelib.uielements import UiText, ImageIcon
 
-
 class NameEntryScreen(MenuScreen):
+    MAX_NAME_LENGTH = 10
+
     def __init__(self, state: GameState, confirm_callback, next_menu: MenuScreen):
         MenuScreen.__init__(self, state, {})
         self.confirm_callback = confirm_callback
@@ -17,7 +18,7 @@ class NameEntryScreen(MenuScreen):
         font = load_font(64, "PixelOperatorMono-Bold.ttf")
 
         name_target_area = UiText(self.sprites)
-        name_target_area.text = "_ _ _ _ _ _ _ _ _ _"
+        name_target_area.text = "_ " * self.MAX_NAME_LENGTH
         name_target_area.font = font
         name_target_area.targetRect = Rect(50, 50, 300, 64)
 
@@ -42,12 +43,13 @@ class NameEntryScreen(MenuScreen):
         alphabet_btns.targetRect = Rect(630, 285, 50, 64)
 
         self.selector_x = 0
-        self.selector_x_last = 0
         self.selector_y = 0
         self.selector_images_letters = [load_image(im, "ui") for im in ("selector0.png", "selector1.png")]
         self.selector_images_delete = [load_image(im, "ui") for im in ("selector_löschen0.png", "selector_löschen1.png")]
         self.selector_images_ok = [load_image(im, "ui") for im in ("selector_ok0.png", "selector_ok1.png")]
         self.selector = ImageIcon(49, 161, self.selector_images_letters, self.sprites )
+
+        self.text_cursor = ImageIcon(49, 63, [load_image(im, "ui") for im in ("selector1.png", "selector1.png")], self.sprites)
 
         self.name_sprite = UiText(self.sprites)
         self.name_sprite.text = ""
@@ -65,7 +67,7 @@ class NameEntryScreen(MenuScreen):
         if (self.selector_y == 2) and (self.selector_x == 12):
             return True
 
-        if len(self.name)>=10:
+        if len(self.name) >= self.MAX_NAME_LENGTH:
             return False
 
         new_char = ""
@@ -90,11 +92,18 @@ class NameEntryScreen(MenuScreen):
                 new_char = "."
             elif self.selector_x == 7:
                 new_char = "-"
-        self.name = self.name+new_char
+            elif self.selector_x == 8:
+                new_char = " "
+
+        self.name = (self.name+new_char).lstrip() # don't allow space at start
         self.update_name_sprite()
         return False
 
     def update_name_sprite(self):
+        if len(self.name) == self.MAX_NAME_LENGTH:
+            self.text_cursor.rect.left = -80 # move it offscreen as we can't type anymore
+        else:
+            self.text_cursor.rect.left = 49 + 64 * len(self.name)
         self.name_sprite.text = "".join(['{} '.format(x) for x in self.name])
 
 
@@ -105,43 +114,47 @@ class NameEntryScreen(MenuScreen):
 
 
     def update_selector(self, moved_horizontally):
+        # reset to default image list
         self.selector.images = self.selector_images_letters
-        if self.selector_y == 2: # we ended up in last row with 2 special sized buttons
-            # in last row 9 = delete, 12 = ok
+
+        # on row 2 we might need to modify x coord and/or active image list
+        if self.selector_y == 2:
+            # Adapt x Coord if necessary: 8 = space, 9 = delete, 12 = ok; if 10 or 11: => 9
             if moved_horizontally:
-                if self.selector_x == 8:
-                    if self.selector_x_last == 7:
-                        self.selector_x = 9
-                    else:
-                        self.selector_x = 7
-                if self.selector_x == 10:
+                if self.selector_x == 10: # moving from delete towards ok
                     self.selector_x = 12
-                if self.selector_x == 11:
+                if self.selector_x == 11: # moving from ok towards delete
                     self.selector_x = 9
             else:
-                if (self.selector_x >= 8) and (self.selector_x < 12):
+                # moving vertically all x from 9 to 11 align up to delete
+                if (self.selector_x > 9) and (self.selector_x < 12):
                     self.selector_x = 9
+
+            # Change to different selector image list for delete or ok
             if self.selector_x == 9:
                 self.selector.images = self.selector_images_delete
             if self.selector_x == 12:
                 self.selector.images = self.selector_images_ok
 
-        if (self.selector_y == 2) and (self.selector_x >=8):
-            if self.selector_x == 9:
+        # Update selector sprite coordinates (special cases for left coordinate of some letters/buttons)
+        if (self.selector_y == 2) and (self.selector_x >= 9):
+            # delete and ok
+            if self.selector_x == 9: # delete button selector left coord
                 self.selector.rect.left = 628
-            if self.selector_x == 12:
+            if self.selector_x == 12: # ok button selector left coord
                 self.selector.rect.left = 808
         elif (self.selector_y == 0) and (self.selector_x == 12):
-            self.selector.rect.left = 49 + self.selector_x * 64 - 2 # M is awfully wide
+            # "M" selector left coordinate (it's awfully wide)
+            self.selector.rect.left = 49 + self.selector_x * 64 - 2
         else:
+            # left coord for all other letters
             self.selector.rect.left = 49 + self.selector_x * 64
-
+        # top coordinate calculation is the same for all
         self.selector.rect.top = 161 + self.selector_y * 60
-        self.selector_x_last = self.selector_x
 
 
     def confirm(self):
-        self.gamestate.PLAYER_NAME = self.name
+        self.gamestate.PLAYER_NAME = self.name.strip() # don't allow spaces at end
         self.confirm_callback()
         self.gamestate.CURRENT_MENU = self.next_menu
 
