@@ -75,10 +75,16 @@ class MenuScreen:
         self.sprites.clear(self.screen, self.background)
 
         self.sprites.update()
+        # todo add "additional_render_groups" to update draw instead of fix game_ui_sprites
+        self.gamestate.GAME_UI_SPRITES.update()
 
         # draw the scene
         if self.frame == 0:
             pg.display.flip()
-        
+
         dirty = self.sprites.draw(self.screen)
+        pg.display.update(dirty)
+
+        # todo add "additional_render_groups" to update draw instead of fix game_ui_sprites
+        dirty = self.gamestate.GAME_UI_SPRITES.draw(self.screen)
         pg.display.update(dirty)

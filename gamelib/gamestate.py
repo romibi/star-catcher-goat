@@ -33,8 +33,7 @@ class GameState:
     PLAYER = None
     STARS = pg.sprite.Group()
 
-    GAME_UI_SPRITES = pg.sprite.Group()    
-    END_UI_SPRITES = pg.sprite.Group()
+    GAME_UI_SPRITES = pg.sprite.RenderUpdates()
 
     GAME_SPRITES = pg.sprite.RenderUpdates()
 
@@ -44,6 +43,8 @@ class GameState:
     SCORE_POINTS = None
     SCORE_STATS = None
     SCORE_MISSED = None
+
+    GAMEPAD_BUTTONS = None
 
     def reset(self, new_columns):
         # Shutdown LEDS

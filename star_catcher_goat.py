@@ -17,6 +17,7 @@ from config.gamevisualizationconfig import GameVisualizationConfig
 from config.buttonconfig import *
 # todo: load_font is "unused" but used below??
 from gamelib.data_helper_functions import load_image, load_font
+from gamelib.gamepad_buttons import Gamepad_Buttons
 
 from gamelib.gamestate import GameState
 from gamelib.ledhandler import LedHandler
@@ -381,7 +382,6 @@ def main():
 
     # Initialize Game Groups
     game_ui_sprites = GAME_STATE.GAME_UI_SPRITES
-    end_ui_sprites = GAME_STATE.END_UI_SPRITES
 
     game_sprites =  GAME_STATE.GAME_SPRITES
 
@@ -390,39 +390,7 @@ def main():
     # todo: nicer:
     GAME_STATE.PLAYER.triggerControllerSoundCallback = trigger_controller_sound
 
-    if GAME_STATE.screenMode == ScreenMode.GAME_BIG:
-        # right/left buttons
-        # noinspection PyTypeChecker
-        ButtonIcon(810, 330, [load_image(im, "buttons32") for im in ("button_blue_left.png", "button_blue_left_pressed.png")], (game_ui_sprites, game_sprites)).frame = 24 # offset button animations a bit
-        # noinspection PyTypeChecker
-        ButtonIcon(860, 330, [load_image(im, "buttons32") for im in ("button_blue_right.png", "button_blue_right_pressed.png")], (game_ui_sprites, game_sprites))
-        # noinspection PyTypeChecker
-        ButtonIcon(780, 370, [load_image(im, "buttons32") for im in ("button_yellow.png", "button_yellow_pressed.png")], (game_ui_sprites, game_sprites)).frame = 12
-
-        # noinspection PyTypeChecker
-        ButtonIcon(750, 620, [load_image(im, "buttons32") for im in ("button_black_right.png", "button_black_right_pressed.png")], (end_ui_sprites, game_sprites)).frame = 24
-        # noinspection PyTypeChecker
-        ButtonIcon(750, 670, [load_image(im, "buttons32") for im in ("button_black_left.png", "button_black_left_pressed.png")], (end_ui_sprites, game_sprites))
-    elif GAME_STATE.screenMode == ScreenMode.SCORE_GAME_BUTTONS:
-        # gamepad buttons from back to front
-        # noinspection PyTypeChecker
-        ButtonIcon(960, 449, [load_image(im, "buttons32") for im in ("button_blue_up.png", "button_blue_up_pressed.png")], (game_ui_sprites, game_sprites))
-        # noinspection PyTypeChecker
-        ButtonIcon(1020, 449, [load_image(im, "buttons32") for im in ("button_white.png", "button_white_pressed.png")], (end_ui_sprites, game_sprites))
-        # noinspection PyTypeChecker
-        ButtonIcon(1055, 449, [load_image(im, "buttons32") for im in ("button_black.png", "button_black_pressed.png")], (end_ui_sprites, game_sprites)).frame = 24
-
-        # noinspection PyTypeChecker
-        ButtonIcon(934, 464, [load_image(im, "buttons32") for im in ("button_blue_left.png", "button_blue_left_pressed.png")],(game_ui_sprites, game_sprites)).frame = 6
-        # noinspection PyTypeChecker
-        ButtonIcon(983, 464, [load_image(im, "buttons32") for im in ("button_blue_right.png", "button_blue_right_pressed.png")],(game_ui_sprites, game_sprites)).frame = 12
-        # noinspection PyTypeChecker
-        ButtonIcon(1146, 464, [load_image(im, "buttons32") for im in ("button_red.png", "button_red_pressed.png")],(game_ui_sprites, game_sprites))
-
-        # noinspection PyTypeChecker
-        ButtonIcon(954, 481, [load_image(im, "buttons32") for im in ("button_blue_down.png", "button_blue_down_pressed.png")],(game_ui_sprites, game_sprites)).frame = 24
-        # noinspection PyTypeChecker
-        ButtonIcon(1120, 481, [load_image(im, "buttons32") for im in ("button_yellow.png", "button_yellow_pressed.png")],(game_ui_sprites, game_sprites)).frame = 6
+    GAME_STATE.GAMEPAD_BUTTONS = Gamepad_Buttons(GAME_STATE)
 
     leds = LedHandler(GAME_CONFIG)
     GAME_STATE.LED_HANDLER = leds
@@ -661,13 +629,6 @@ def play_loop(serial_keys):
         score_stats.text = f"Gefangen: {player.starsCatchedHorn+player.starsCatchedButt: >2} (Mit Hörner: {player.starsCatchedHorn: >2})"
 
     score_missed.text = f"Verpasst: {GAME_STATE.StarsMissed: >2}"
-
-
-    if (GAME_STATE.FRAME_COUNT == 1) or (GAME_STATE.FRAME_COUNT == GAME_CONFIG.END_FRAME_COUNT):
-        for sprite in GAME_STATE.GAME_UI_SPRITES:
-            sprite.paused = GAME_STATE.FRAME_COUNT != 1
-        for sprite in GAME_STATE.END_UI_SPRITES:
-            sprite.paused = GAME_STATE.FRAME_COUNT != GAME_CONFIG.END_FRAME_COUNT
 
     if (GAME_STATE.FRAME_COUNT == GAME_CONFIG.END_FRAME_COUNT) and (not GAME_STATE.REPLAY):
         def update_and_save_recording():
