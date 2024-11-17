@@ -49,7 +49,7 @@ class NameEntryScreen(MenuScreen):
         self.selector_images_ok = [load_image(im, "ui") for im in ("selector_ok0.png", "selector_ok1.png")]
         self.selector = ImageIcon(49, 161, self.selector_images_letters, self.sprites )
 
-        self.text_cursor = ImageIcon(49, 63, [load_image(im, "ui") for im in ("selector1.png", "selector1.png")], self.sprites)
+        self.text_cursor = ImageIcon(49, 63, [load_image("selector1.png", "ui")], self.sprites)
 
         self.name_sprite = UiText(self.sprites)
         self.name_sprite.text = ""

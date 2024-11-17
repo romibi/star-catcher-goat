@@ -70,7 +70,7 @@ class ImageIcon(pg.sprite.Sprite):
             return
 
         self.frame = self.frame + 1
-        self.image = self.images[self.frame // self.animation_cycle % 2]
+        self.image = self.images[self.frame // self.animation_cycle % len(self.images)]
 
 
 class ButtonIcon(ImageIcon):
