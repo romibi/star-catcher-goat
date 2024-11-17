@@ -157,6 +157,8 @@ class NameEntryScreen(MenuScreen):
         self.gamestate.PLAYER_NAME = self.name.strip() # don't allow spaces at end
         self.confirm_callback()
         self.gamestate.CURRENT_MENU = self.next_menu
+        # callback might update screen → update next menu background
+        self.gamestate.CURRENT_MENU.background = self.gamestate.GAME_SCREEN.copy()
 
     def handle_key(self, key):
         if key in BUTTONS_MENU_DOWN:

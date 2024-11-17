@@ -436,7 +436,8 @@ def main():
             score_points.targetRect = Rect(905,445, 335, 50)
             score_points.font = load_font(56)
         elif GAME_STATE.screenMode == ScreenMode.SCORE_GAME_BUTTONS:
-            score_points.targetRect = Rect(25, -96, 800, 355)
+            score_points.crop = True
+            score_points.targetRect = Rect(25, -96, 800, 445)
             score_points.font = load_font(552, "PixelOperator.ttf")
         score_points.color = "#FFC000"
         score_points.align = 0
@@ -678,6 +679,7 @@ def play_loop(serial_keys):
                 mode = "easy"
             add_highscore(points, name, mode, filename)
             persist_all_highscores()
+            re_render_background()
         if random.randint(0,10) > 7:
           trigger_controller_sound("chest")
         else:
@@ -685,7 +687,6 @@ def play_loop(serial_keys):
         score_points.text = ""
         score_missed.text = ""
         score_stats.text = ""
-        re_render_background()
         GAME_STATE.CURRENT_MENU = MENU_FACTORY.NameEntry(update_and_save_recording)
 
     # re-draw whole background

@@ -1,7 +1,7 @@
 import pygame as pg
 
 from typing import List
-from pygame import Rect
+from pygame import Rect, Surface
 
 from gamelib.data_helper_functions import load_font
 
@@ -19,6 +19,7 @@ class UiText(pg.sprite.Sprite):
         self.textFunc = None
         self.targetRect = Rect(0,0,0,0)
         self.align = -1 # -1 left, 0 center, 1 right
+        self.crop = False
         self.update()
         self.image = self.font.render(self.text, 0, self.color)
         self.rect = self.image.get_rect().move(10, 450)
@@ -40,6 +41,13 @@ class UiText(pg.sprite.Sprite):
                 self.rect.left = self.rect.left + ((self.targetRect.width - img.get_rect().width) / 2)
             elif self.align == 1:
                 self.rect.left = self.rect.left + (self.targetRect.width - img.get_rect().width)
+
+            if self.crop:
+                self.rect.width = img.get_rect().width
+                img = Surface((self.rect.width, self.rect.height), pg.SRCALPHA)
+                img.blit(self.image, (0,0), self.image.get_rect())
+                self.image = img
+
 
 
 class ImageIcon(pg.sprite.Sprite):
