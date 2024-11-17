@@ -72,12 +72,12 @@ class LedHandler:
     leds = {}
 
     goatSegmentMap = [
-        {"hub": 1, "body_segments": [0], "horn_segments": [1]},
-        {"hub": 1, "body_segments": [2], "horn_segments": [3]},
-        {"hub": 2, "body_segments": [0], "horn_segments": [1]},
-        {"hub": 2, "body_segments": [2], "horn_segments": [3]},
-        {"hub": 3, "body_segments": [0], "horn_segments": [1]},
-        {"hub": 3, "body_segments": [2], "horn_segments": [3]}
+        {"hub": 1, "body_segments": [0, 2], "horn_segments": [1]},
+        {"hub": 1, "body_segments": [3, 5], "horn_segments": [4]},
+        {"hub": 2, "body_segments": [0, 2], "horn_segments": [1]},
+        {"hub": 2, "body_segments": [3, 5], "horn_segments": [4]},
+        {"hub": 3, "body_segments": [0, 2], "horn_segments": [1]},
+        {"hub": 3, "body_segments": [3, 5], "horn_segments": [4]}
     ]
     goat_hubs = {}
     goats = {}
@@ -160,7 +160,7 @@ class LedHandler:
   
         segment = self.ledSegmentMap[row][column]
 
-        return f'http://{hub}{self.API_ADDR}{self.API_ARG_SEGMENT}{segment["segment"]}{self.API_ARG_BRIGHTNESS}{bright}{self.API_ARG_COLOR}{color}'
+        return f'http://{hub}{self.API_ADDR}{self.API_ARG_SEGMENT}{segment["segment"]}{self.API_ARG_BRIGHTNESS}{bright}{self.API_ARG_COLOR}{color}&SV=2'
 
 
     def get_goat_led_api_urls(self, pos, body, horn, bright, body_color, horn_color):
@@ -171,10 +171,10 @@ class LedHandler:
         urls = []
         if body:
             for segment in self.goatSegmentMap[pos]["body_segments"]:
-                urls += [f'http://{hub}{self.API_ADDR}{self.API_ARG_SEGMENT}{segment}{self.API_ARG_BRIGHTNESS}{bright}{self.API_ARG_COLOR}{body_color}']
+                urls += [f'http://{hub}{self.API_ADDR}{self.API_ARG_SEGMENT}{segment}{self.API_ARG_BRIGHTNESS}{bright}{self.API_ARG_COLOR}{body_color}&SV=2']
         if horn:
             for segment in self.goatSegmentMap[pos]["horn_segments"]:
-                urls += [f'http://{hub}{self.API_ADDR}{self.API_ARG_SEGMENT}{segment}{self.API_ARG_BRIGHTNESS}{bright}{self.API_ARG_COLOR}{horn_color}']
+                urls += [f'http://{hub}{self.API_ADDR}{self.API_ARG_SEGMENT}{segment}{self.API_ARG_BRIGHTNESS}{bright}{self.API_ARG_COLOR}{horn_color}&SV=2']
 
         return urls
 
