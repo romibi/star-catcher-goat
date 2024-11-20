@@ -50,7 +50,7 @@ RH_RF69 rf69(RFM69_CS, RFM69_INT);
 // Class to manage message delivery and receipt, using the driver declared above
 RHReliableDatagram rf69_manager(rf69, MY_ADDRESS);
 
-bool USE_SERIAL = false;
+bool USE_SERIAL = true; // false;
 
 bool last_R = false;
 bool last_Y = false;
@@ -131,7 +131,8 @@ uint8_t data[] = "And hello back to you";
 // Dont put this on the stack:
 uint8_t buf[RH_RF69_MAX_MESSAGE_LEN];
 
-String command_send_buffer[20];
+#define command_send_buffer_size 20
+String command_send_buffer[command_send_buffer_size];
 int csb_add_index = 0;
 int csb_send_index = 0;
 
@@ -151,6 +152,7 @@ void loop() {
       Serial.println(connection_state);
       Serial.println(last_button_state);
     } else if (command.equals("serial on")) {
+      // deprecated command?
       USE_SERIAL = true;
       
       if(last_R) Keyboard.release(BTN_KEY_R);
@@ -164,6 +166,7 @@ void loop() {
 
       return;
     } else if (command.equals("serial off")) {
+      // deprecated command?
       USE_SERIAL = false;
       
       last_R = false;
@@ -175,8 +178,8 @@ void loop() {
       last_LEFT = false;
       last_RIGHT = false;
       return;
-    } else { // command for controller
-      int csb_index = (csb_add_index+1) % sizeof(command_send_buffer);
+    } else if (!command.equals("")) { // command for controller
+      int csb_index = (csb_add_index+1) % command_send_buffer_size;
 
       if(csb_index==csb_send_index) {
         Serial.println("Warning: command send buffer full!");
@@ -203,7 +206,7 @@ void loop() {
     uint8_t from;
     
     //if (rf69_manager.recvfromAck(buf, &len, &from)) {
-    if (rf69_manager.recvfromAck(buf, &len, 1000, &from)) {      
+    if (rf69_manager.recvfromAck(buf, &len, &from)) {      
       bool print = !connection_state.equals("CONNECTION:OK");
       connection_state = "CONNECTION:OK";
       last_received_time = millis();
@@ -215,7 +218,7 @@ void loop() {
         String commands = "";
         while(csb_send_index!=csb_add_index) {
           commands += command_send_buffer[csb_send_index] + ";" ;
-          csb_send_index = (csb_send_index + 1) % sizeof(command_send_buffer);
+          csb_send_index = (csb_send_index + 1) % command_send_buffer_size;
         }
         commands.trim();
         commands = commands.substring(0, commands.length() - 1);

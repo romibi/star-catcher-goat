@@ -331,33 +331,6 @@ unsigned long last_sent_count_reset_time = 0;
 unsigned long last_sent_time = 0;
 
 void loop() {
-  if (rf69_manager.available()) {
-    // Wait for a message addressed to us from the client
-    uint8_t len = sizeof(buf);
-    uint8_t from;
-    // or use no ack?: if (rf69_manager.recvfrom(buf, &len, &from)) {
-    if (rf69_manager.recvfromAck(buf, &len, &from)) {
-    //if (rf69_manager.recvfrom(buf, &len, &from)) {
-      buf[len] = 0; // zero out remaining string
-
-      Serial.print("Got packet from #"); Serial.print(from);
-      Serial.print(" [RSSI :");
-      Serial.print(rf69.lastRssi());
-      Serial.print("] : ");
-      Serial.println((char*)buf);
-
-      String command = buf;
-
-      char *token = strtok(buf, ";");
-      while (token != NULL) {
-        String command = token;
-        command.trim();
-        handleCommand(command);
-        token = strtok(NULL, ";");
-      }
-    }
-  }
-
   int radiopacketPointer = 0;
   char radiopacket[20] = "";
 
@@ -429,23 +402,6 @@ void loop() {
     }
   }
 
-  Serial.print("radiopacket: ");
-  Serial.print(radiopacket);
-  Serial.print(" last_sent_state: ");
-  Serial.print(last_sent_state);
-  Serial.print(" last_sent_count: ");
-  Serial.print(last_sent_count);
-  Serial.print(" last_sent_time: ");
-  Serial.print(last_sent_time);
-  Serial.print(" millis: ");
-  Serial.print(millis());
-  Serial.print(" doSend: ");  
-  if (doSend) {
-    Serial.println(" true");  
-  } else {
-    Serial.println(" false");  
-  }
-
   // Check if we need to resend
   // if(anyButtonDown || lastButtonReleased) {
   if (doSend) {
@@ -462,6 +418,7 @@ void loop() {
     last_sent_count += 1;
   }
 
+  // set last values to current one for next loop
   last_R = curr_R;
   last_Y = curr_Y;
   last_START = curr_START;
@@ -471,10 +428,53 @@ void loop() {
   last_LEFT = curr_LEFT;
   last_RIGHT = curr_RIGHT;
 
+  // use receive as a delay  
+  int planned_delay;
+  unsigned long start_wait = millis();
+
   if(!playing_melody && (strcmp(last_sent_state, radiopacket)==0) && (last_sent_count_reset_time+SHALLOW_SLEEP_TIME<millis())) {
-    delay(SHALLOW_SLEEP_DELAY);
+    planned_delay = SHALLOW_SLEEP_DELAY;
   } else {
-    delay(MIN_DELAY);
+    planned_delay = MIN_DELAY;
   }
+
+  // directly after sending try receiving:  
+  if (rf69_manager.waitAvailableTimeout(planned_delay*8/10)) { // wait max 80% of available time
+    Serial.println("Receiving");
+    // Wait for a message addressed to us from the client
+    uint8_t len = sizeof(buf);
+    uint8_t from;
+    // or use no ack?: if (rf69_manager.recvfrom(buf, &len, &from)) {
+    if (rf69_manager.recvfromAck(buf, &len, &from)) {
+    //if (rf69_manager.recvfrom(buf, &len, &from)) {
+      buf[len] = 0; // zero out remaining string
+
+      Serial.print("Got packet from #"); Serial.print(from);
+      Serial.print(" [RSSI :");
+      Serial.print(rf69.lastRssi());
+      Serial.print("] : ");
+      Serial.println((char*)buf);
+
+      String command = buf;
+
+      char *token = strtok(buf, ";");
+      while (token != NULL) {
+        String command = token;
+        command.trim();
+        handleCommand(command);
+        token = strtok(NULL, ";");
+      }
+    } else {
+      Serial.println("Receive failed");
+    }
+  }
+  
+  unsigned long now = millis();
+  long remaining_delay = planned_delay - (now - start_wait);
+  
+  if(remaining_delay>0) {
+    delay(remaining_delay);
+  }
+
   digitalWrite(LED_BUILTIN, LOW);
 }
