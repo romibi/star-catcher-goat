@@ -155,13 +155,18 @@ class MenuFactory:
 
         if key in BUTTONS_MENU_CONFIRM:
             if self.gamestate.CONTROLLER_COM:
-                self.gamestate.CONTROLLER_COM.write(bytes(f"serial off\n", 'utf-8'))
-                self.gamestate.CONTROLLER_COM.flush()
-                self.gamestate.CONTROLLER_COM = None
+                try:
+                    # todo: decide: deprecate serial off?
+                    self.gamestate.CONTROLLER_COM.write(bytes(f"serial off\n", 'utf-8'))
+                    self.gamestate.CONTROLLER_COM.flush()
+                    self.gamestate.CONTROLLER_COM = None
+                except:
+                    pass
             else:
                 try:
                     self.gamestate.CONTROLLER_COM = serial.Serial(port=ports[new_index].device, baudrate=9600,
                                                                   timeout=.1)
+                    # todo: decide: deprecate serial off?
                     self.gamestate.CONTROLLER_COM.write(bytes(f"serial on\n", 'utf-8'))
                     self.gamestate.CONTROLLER_COM.flush()
                 except:  # noqa

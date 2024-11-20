@@ -280,8 +280,11 @@ def spawn_new_star_row(stars, star_groups):
 def trigger_controller_sound(name):
     if GAME_STATE.CONTROLLER_COM:
         # GAME_STATE.CONTROLLER_COM.write(bytes(f"play {name}", 'utf-8'))
-        GAME_STATE.CONTROLLER_COM.write(bytes(f"p:{name[0]}\n", 'utf-8'))
-        GAME_STATE.CONTROLLER_COM.flush()
+        try:
+            GAME_STATE.CONTROLLER_COM.write(bytes(f"p:{name[0]}\n", 'utf-8'))
+            GAME_STATE.CONTROLLER_COM.flush()
+        except:
+            pass
 
 
 def get_buttons_from_serial():
@@ -294,12 +297,17 @@ def get_buttons_from_serial():
     if (not GAME_STATE.CONTROLLER_LAST_RECEIVE) or (GAME_STATE.CONTROLLER_LAST_RECEIVE + 2.0 < time.time()):
         # we haven't received anythin in a while?
         # let's request the full state
-        GAME_STATE.CONTROLLER_COM.write(bytes(f"state\n", 'utf-8'))
-        GAME_STATE.CONTROLLER_COM.flush()
+        try:
+            GAME_STATE.CONTROLLER_COM.write(bytes(f"state\n", 'utf-8'))
+            GAME_STATE.CONTROLLER_COM.flush()
+        except:
+            pass
 
-    bytes_to_read =  GAME_STATE.CONTROLLER_COM.inWaiting()
-
-    data =  GAME_STATE.CONTROLLER_COM.read(bytes_to_read)
+    try:
+        bytes_to_read =  GAME_STATE.CONTROLLER_COM.inWaiting()
+        data =  GAME_STATE.CONTROLLER_COM.read(bytes_to_read)
+    except:
+        return result
     lines = data.decode("utf-8").splitlines()
 
     for line in lines:
@@ -464,6 +472,7 @@ def main():
         GAME_STATE.CONTROLLER_COM_ADDR = port.device
         try:
             GAME_STATE.CONTROLLER_COM = serial.Serial(port=port.device, baudrate=9600, timeout=.1)
+            # todo: decide: deprecate serial off?
             GAME_STATE.CONTROLLER_COM.write(bytes(f"serial on\n", 'utf-8'))
             GAME_STATE.CONTROLLER_COM.flush()
         except: # noqa
@@ -503,9 +512,13 @@ def main():
     leds.update_leds()
 
     if GAME_STATE.CONTROLLER_COM:
+        # todo: decide: deprecate serial off?
         # controller seems to get buggy on serial off ...
-        #GAME_STATE.CONTROLLER_COM.write(bytes(f"serial off\n", 'utf-8'))
-        #GAME_STATE.CONTROLLER_COM.flush()
+        # try:
+        #     GAME_STATE.CONTROLLER_COM.write(bytes(f"serial off\n", 'utf-8'))
+        #     GAME_STATE.CONTROLLER_COM.flush()
+        # except:
+        #     pass
         GAME_STATE.CONTROLLER_COM = None
 
     if pg.mixer:
