@@ -20,7 +20,7 @@
 #define MY_ADDRESS   1
 
 // Where to send packets to!
-#define DEST_ADDRESS 2
+// #define DEST_ADDRESS 2 // we answer to whoever sends
 
 // What are the buttons mapped to?
 #define BTN_KEY_R KEY_RETURN
@@ -42,6 +42,7 @@
 #endif
 
 #define MIN_DELAY 10
+#define CONNECTION_LOST_TIMEOUT 10000
 
 // Singleton instance of the radio driver
 RH_RF69 rf69(RFM69_CS, RFM69_INT);
@@ -130,13 +131,26 @@ uint8_t data[] = "And hello back to you";
 // Dont put this on the stack:
 uint8_t buf[RH_RF69_MAX_MESSAGE_LEN];
 
+String command_send_buffer[20];
+int csb_add_index = 0;
+int csb_send_index = 0;
+
+unsigned long last_received_time = 0;
+String connection_state = "CONNECTION: UNKNOWN";
+String last_color_state = "COLOR:g";
+String last_button_state = "BUTTONS:";
+
 void loop() {
   // parse commands from serial
   if(Serial.available()>0) {
     String command = Serial.readStringUntil('\n');
     command.trim();
 
-    if (command.equals("serial on")) {
+    if (command.equals("state")) {
+      Serial.println(last_color_state);
+      Serial.println(connection_state);
+      Serial.println(last_button_state);
+    } else if (command.equals("serial on")) {
       USE_SERIAL = true;
       
       if(last_R) Keyboard.release(BTN_KEY_R);
@@ -162,14 +176,23 @@ void loop() {
       last_RIGHT = false;
       return;
     } else { // command for controller
-      int str_len = command.length() + 1;
+      int csb_index = (csb_add_index+1) % sizeof(command_send_buffer);
+
+      if(csb_index==csb_send_index) {
+        Serial.println("Warning: command send buffer full!");
+      } else {
+        command_send_buffer[csb_index] = command;
+        csb_add_index = csb_index;
+      }
+
+      /* int str_len = command.length() + 1;
       char cmddata[str_len];
       command.toCharArray(cmddata, str_len);
 
       //if (!rf69_manager.sendtoWait(cmddata, sizeof(cmddata), DEST_ADDRESS)) {
       if (!rf69_manager.sendto(cmddata, sizeof(cmddata), DEST_ADDRESS)) {
         Serial.println("RFM69 Sending failed (no ack)");
-      }
+      } */
     }
   }
 
@@ -179,12 +202,46 @@ void loop() {
     uint8_t len = sizeof(buf);
     uint8_t from;
     
-    if (rf69_manager.recvfromAck(buf, &len, &from)) {
+    //if (rf69_manager.recvfromAck(buf, &len, &from)) {
+    if (rf69_manager.recvfromAck(buf, &len, 1000, &from)) {      
+      bool print = !connection_state.equals("CONNECTION:OK");
+      connection_state = "CONNECTION:OK";
+      last_received_time = millis();
+      if (print) {
+        Serial.println(connection_state);
+      }
+      // first of all send queued commands
+      if(csb_send_index!=csb_add_index) {
+        String commands = "";
+        while(csb_send_index!=csb_add_index) {
+          commands += command_send_buffer[csb_send_index] + ";" ;
+          csb_send_index = (csb_send_index + 1) % sizeof(command_send_buffer);
+        }
+        commands.trim();
+        commands = commands.substring(0, commands.length() - 1);
+        
+        int str_len = commands.length() + 1;
+        char cmddata[str_len];
+        commands.toCharArray(cmddata, str_len);
+        Serial.println("Sending:"+commands);
+
+        if (!rf69_manager.sendtoWait(cmddata, sizeof(cmddata), from)) {
+          Serial.println("RFM69 Sending failed (no ack)");
+        }
+      }
+
+      // Handle received
       buf[len] = 0; // zero out remaining string
       
-      if(USE_SERIAL) {
-        Serial.print("BUTTONS:");
-        Serial.println((char*)buf);
+      String received = String((char*)buf);
+      if(received.startsWith("C:")) {
+        String serial_out = "COLOR:"+received.substring(2);
+        Serial.println(serial_out);
+        last_color_state = serial_out;
+      } else if(USE_SERIAL) {
+        String serial_out = "BUTTONS:"+String((char*)buf);
+        Serial.println(serial_out);
+        last_button_state = serial_out;
       } else {
 
         Serial.print("RFM69 Got packet from #"); Serial.print(from);
@@ -230,6 +287,19 @@ void loop() {
               break;
           }
         }
+      }
+    } else {
+      bool print = !connection_state.equals("CONNECTION:UNSTABLE");
+      connection_state = "CONNECTION: UNSTABLE";
+      if (print) {      
+        Serial.println(connection_state);
+      }
+    }
+  } else {
+    if (!connection_state.equals("CONNECTION:LOST")) {
+      if (last_received_time + CONNECTION_LOST_TIMEOUT < millis()) {
+        connection_state = "CONNECTION:LOST";
+        Serial.println(connection_state);
       }
     }
   }

@@ -2,6 +2,9 @@
 #include <RH_RF69.h>
 #include <RHReliableDatagram.h>
 
+String CONTROLLER_COLOR = "g";
+// String CONTROLLER_COLOR = "b";
+
 // ====
 // PINS
 // ====
@@ -35,12 +38,15 @@
 // ===============
 // Constants Logic
 // ===============
-#define REPEAT_DELAY 1000
-#define MIN_DELAY 10
-#define SEND_REPEAT_FAST_COUNT 10
+#define MIN_DELAY 10 // delay end of loop (normal mode)
+// todo implement deep sleep with interrupt
+#define SHALLOW_SLEEP_TIME 10000 //300000 // 5 min until loop slows down
+#define SHALLOW_SLEEP_DELAY 1000 // delay end of loop (shallow sleep mode)
+// -> in this state you need to press a button up to 1s to back to normal speed
 
-#define SEND_BTNS_OFF_TIMES 10
-#define SEND_START_VALUE 604700672 // 0010 0100 0000 1011 00..
+#define SEND_REPEAT_FAST_COUNT 4 // after a change of pressed buttons: how many times to send state
+#define SEND_REPEAT_SLOW_DELAY 100 // after fast re-sends, how often to re-send same state
+#define SEND_REPEAT_SLOW_EMPTY_DELAY 1000 // after fast re-sends, if no buttons are pressed, how often to re-sed same state
 
 // ================
 // Constants Melody
@@ -96,6 +102,7 @@
 #define nC7 2093.0
 
 #define MELODY_TWINKLE 1
+
 unsigned long twinkleLastNoteTime = 0;
 int twinklePos = -2; // -2 stopped, -1 starting
 int twinkleLength = 5;
@@ -141,8 +148,8 @@ RHReliableDatagram rf69_manager(rf69, MY_ADDRESS);
 
 int16_t packetnum = 0;  // packet counter, we increment per xmission
 
-void playMelodyHandler(int &melodyPos, int &melodyLength, float* melodyNotes, int* melodyTimings, unsigned long &melodyLastNoteTime) {
-  if(melodyPos<-1) return;
+bool playMelodyHandler(int &melodyPos, int &melodyLength, float* melodyNotes, int* melodyTimings, unsigned long &melodyLastNoteTime) {
+  if(melodyPos<-1) return false;
     
   unsigned long now = millis();
   bool playNext = false;
@@ -153,7 +160,7 @@ void playMelodyHandler(int &melodyPos, int &melodyLength, float* melodyNotes, in
     playNext = playNext || ((now - melodyLastNoteTime) > melodyTimings[melodyPos]);
   }
 
-  if(!playNext) return;
+  if(!playNext) return true;
 
   melodyPos += 1;
 
@@ -165,13 +172,17 @@ void playMelodyHandler(int &melodyPos, int &melodyLength, float* melodyNotes, in
       tone(BUZZER, melodyNotes[melodyPos], melodyTimings[melodyPos]);
     melodyLastNoteTime  = millis();
   }
+
+  return true;
 }
 
-void playMelodyLoop() {
-  playMelodyHandler(pointPos, pointLength, pointNotes, pointTimings, pointLastNoteTime);
-  playMelodyHandler(twinklePos, twinkleLength, twinkleNotes, twinkleTimings, twinkleLastNoteTime);
-  playMelodyHandler(fanfarePos, fanfareLength, fanfareNotes, fanfareTimings, fanfareLastNoteTime);
-  playMelodyHandler(chestPos, chestLength, chestNotes, chestTimings, chestLastNoteTime);
+bool playMelodyLoop() {
+  boolean result = false;
+  result = result || playMelodyHandler(pointPos, pointLength, pointNotes, pointTimings, pointLastNoteTime);
+  result = result || playMelodyHandler(twinklePos, twinkleLength, twinkleNotes, twinkleTimings, twinkleLastNoteTime);
+  result = result || playMelodyHandler(fanfarePos, fanfareLength, fanfareNotes, fanfareTimings, fanfareLastNoteTime);
+  result = result || playMelodyHandler(chestPos, chestLength, chestNotes, chestTimings, chestLastNoteTime);
+  return result;
 }
 
 void playMelody(int melody) {
@@ -188,6 +199,24 @@ void playMelody(int melody) {
     case MELODY_CHEST:
       chestPos = -1;
       break;
+  }
+}
+
+void handleCommand(String command) {
+  if (command.equals("play chest") || command.equals("p:c")) {
+    playMelody(MELODY_CHEST);
+  }
+  
+  if (command.equals("play point") || command.equals("p:p")) {
+    playMelody(MELODY_POINT);
+  }
+  
+  if (command.equals("play twinkle") || command.equals("p:t")) {
+    playMelody(MELODY_TWINKLE);
+  }
+  
+  if (command.equals("play fanfare") || command.equals("p:f")) {
+    playMelody(MELODY_FANFARE);
   }
 }
 
@@ -239,6 +268,16 @@ void setup() {
   rf69.setEncryptionKey(key);
 
   Serial.print("RFM69 radio @");  Serial.print((int)RF69_FREQ);  Serial.println(" MHz");
+  
+  String color_command = "C:"+CONTROLLER_COLOR;
+  char radiopacket[20];
+  color_command.toCharArray(radiopacket, 20);
+  Serial.print("Sending "); Serial.println(radiopacket);
+  // Send a message to the DESTINATION!
+  if (!rf69_manager.sendtoWait((uint8_t *)radiopacket, strlen(radiopacket), DEST_ADDRESS)) {
+    Serial.println("Sending failed (no ack)");
+  }
+
 }
 
 // Dont put this on the stack:
@@ -286,14 +325,19 @@ bool anyButtonDown = false;
 bool anyTrigger = false;
 bool lastButtonReleased = false;
 
+char last_sent_state[20] = "";
+int last_sent_count = 0;
+unsigned long last_sent_count_reset_time = 0;
+unsigned long last_sent_time = 0;
+
 void loop() {
   if (rf69_manager.available()) {
     // Wait for a message addressed to us from the client
     uint8_t len = sizeof(buf);
     uint8_t from;
     // or use no ack?: if (rf69_manager.recvfrom(buf, &len, &from)) {
-    //if (rf69_manager.recvfromAck(buf, &len, &from)) {
-    if (rf69_manager.recvfrom(buf, &len, &from)) {
+    if (rf69_manager.recvfromAck(buf, &len, &from)) {
+    //if (rf69_manager.recvfrom(buf, &len, &from)) {
       buf[len] = 0; // zero out remaining string
 
       Serial.print("Got packet from #"); Serial.print(from);
@@ -303,22 +347,13 @@ void loop() {
       Serial.println((char*)buf);
 
       String command = buf;
-      command.trim();
 
-      if (command.equals("play chest")) {
-        playMelody(MELODY_CHEST);
-      }
-      
-      if (command.equals("play point")) {
-        playMelody(MELODY_POINT);
-      }
-      
-      if (command.equals("play twinkle")) {
-        playMelody(MELODY_TWINKLE);
-      }
-      
-      if (command.equals("play fanfare")) {
-        playMelody(MELODY_FANFARE);
+      char *token = strtok(buf, ";");
+      while (token != NULL) {
+        String command = token;
+        command.trim();
+        handleCommand(command);
+        token = strtok(NULL, ";");
       }
     }
   }
@@ -326,7 +361,8 @@ void loop() {
   int radiopacketPointer = 0;
   char radiopacket[20] = "";
 
-  playMelodyLoop();
+  bool playing_melody;
+  playing_melody = playMelodyLoop();
 
   // Read Buttons
   curr_R = digitalRead(BTN_R)==LOW;
@@ -378,8 +414,41 @@ void loop() {
   if (anyTrigger)
     tone(BUZZER, 45, 50);
 
+  if(strcmp(last_sent_state, radiopacket)!=0) {
+    last_sent_count = 0;
+    last_sent_count_reset_time = millis();
+  }
+
+  bool doSend = false;
+  doSend = last_sent_count < SEND_REPEAT_FAST_COUNT;
+  if(!doSend) {
+    if(strcmp(radiopacket, "") == 0) {
+      doSend = last_sent_time + SEND_REPEAT_SLOW_EMPTY_DELAY < millis();
+    } else {
+      doSend = last_sent_time + SEND_REPEAT_SLOW_DELAY < millis();
+    }
+  }
+
+  Serial.print("radiopacket: ");
+  Serial.print(radiopacket);
+  Serial.print(" last_sent_state: ");
+  Serial.print(last_sent_state);
+  Serial.print(" last_sent_count: ");
+  Serial.print(last_sent_count);
+  Serial.print(" last_sent_time: ");
+  Serial.print(last_sent_time);
+  Serial.print(" millis: ");
+  Serial.print(millis());
+  Serial.print(" doSend: ");  
+  if (doSend) {
+    Serial.println(" true");  
+  } else {
+    Serial.println(" false");  
+  }
+
   // Check if we need to resend
-  if(anyButtonDown || lastButtonReleased) {
+  // if(anyButtonDown || lastButtonReleased) {
+  if (doSend) {
     // Status LED we will send
     digitalWrite(LED_BUILTIN, HIGH);
 
@@ -388,6 +457,9 @@ void loop() {
     if (!rf69_manager.sendtoWait((uint8_t *)radiopacket, strlen(radiopacket), DEST_ADDRESS)) {
       Serial.println("Sending failed (no ack)");
     }
+    last_sent_time = millis();
+    strcpy(last_sent_state, radiopacket);    
+    last_sent_count += 1;
   }
 
   last_R = curr_R;
@@ -399,6 +471,10 @@ void loop() {
   last_LEFT = curr_LEFT;
   last_RIGHT = curr_RIGHT;
 
-  delay(MIN_DELAY);
+  if(!playing_melody && (strcmp(last_sent_state, radiopacket)==0) && (last_sent_count_reset_time+SHALLOW_SLEEP_TIME<millis())) {
+    delay(SHALLOW_SLEEP_DELAY);
+  } else {
+    delay(MIN_DELAY);
+  }
   digitalWrite(LED_BUILTIN, LOW);
 }
