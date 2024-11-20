@@ -3,10 +3,13 @@ from config.buttonconfig import *
 from gamelib.uielements import *
 
 from gamelib.gamestate import GameState
+#from star_catcher_goat import MENU_FACTORY
+
 
 class MenuScreen:
-    def __init__(self, state: GameState, menu_optionmap, darken_bg=True):
+    def __init__(self, state: GameState, menu_optionmap, other_menus, darken_bg=True, next_menu=None):
         self.gamestate = state
+        self.other_menus = other_menus
         self.screen = state.GAME_SCREEN
         self.background = self.screen.copy()
         self.sprites = pg.sprite.RenderUpdates()
@@ -15,6 +18,7 @@ class MenuScreen:
         self.cursor.targetRect = Rect(50, 100, 64, 64)
         self.menuOptionMap = menu_optionmap
         self.cursorIndex = 0
+        self.next_menu = next_menu
 
         next_pos = 100
         for menuEntry in menu_optionmap.keys():
@@ -33,9 +37,19 @@ class MenuScreen:
             overlay_bg.fill((0,0,0, 150))
             self.background.blit(overlay_bg, (0, 0))
 
+
+    def other_menu_closed(self):
+        self.gamestate.GAME_SCREEN.blit(self.background, (0, 0))
+        pg.display.flip()
+
+
     def _close_menu(self):
-        self.gamestate.CURRENT_MENU = None
-        self.gamestate.MENU_JUST_CLOSED = True
+        if self.next_menu:
+            self.gamestate.CURRENT_MENU = self.next_menu
+            self.gamestate.CURRENT_MENU.other_menu_closed()
+        else:
+            self.gamestate.CURRENT_MENU = None
+            self.gamestate.MENU_JUST_CLOSED = True
 
 
     def handle_key(self, key):
@@ -52,6 +66,13 @@ class MenuScreen:
             menu_functions = list(self.menuOptionMap.values())
             if (self.cursorIndex >= 0) and (len(menu_functions) > self.cursorIndex):
                 menu_functions[self.cursorIndex](key)
+        if key == SERIAL_CONTROLLER_DC:
+            if "controller_dc" in self.other_menus:
+                self.gamestate.CURRENT_MENU = self.other_menus["controller_dc"](self)
+                # self.gamestate.CURRENT_MENU.background = self.gamestate.GAME_SCREEN.copy()
+        if key in BUTTONS_MENU_OPEN:
+            if "fullmenu" in self.other_menus:
+                self.gamestate.CURRENT_MENU = self.other_menus["fullmenu"](self)
         return False
 
 

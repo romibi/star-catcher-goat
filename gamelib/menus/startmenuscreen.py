@@ -8,8 +8,8 @@ from gamelib.uielements import UiText, ButtonIcon
 
 
 class StartMenuScreen(MenuScreen):
-    def __init__(self, state: GameState):
-        MenuScreen.__init__(self, state, {}, darken_bg=False)
+    def __init__(self, state: GameState, other_menus):
+        MenuScreen.__init__(self, state,{}, other_menus=other_menus, darken_bg=False)
 
         normal_game_text = UiText(self.sprites)
         normal_game_text.text = "Normales Spiel starten"

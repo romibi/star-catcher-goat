@@ -279,7 +279,8 @@ def spawn_new_star_row(stars, star_groups):
 
 def trigger_controller_sound(name):
     if GAME_STATE.CONTROLLER_COM:
-        GAME_STATE.CONTROLLER_COM.write(bytes(f"play {name}", 'utf-8'))
+        # GAME_STATE.CONTROLLER_COM.write(bytes(f"play {name}", 'utf-8'))
+        GAME_STATE.CONTROLLER_COM.write(bytes(f"p:{name[0]}\n", 'utf-8'))
         GAME_STATE.CONTROLLER_COM.flush()
 
 
@@ -290,7 +291,14 @@ def get_buttons_from_serial():
 
     last_line = ""
 
+    if (not GAME_STATE.CONTROLLER_LAST_RECEIVE) or (GAME_STATE.CONTROLLER_LAST_RECEIVE + 2.0 < time.time()):
+        # we haven't received anythin in a while?
+        # let's request the full state
+        GAME_STATE.CONTROLLER_COM.write(bytes(f"state\n", 'utf-8'))
+        GAME_STATE.CONTROLLER_COM.flush()
+
     bytes_to_read =  GAME_STATE.CONTROLLER_COM.inWaiting()
+
     data =  GAME_STATE.CONTROLLER_COM.read(bytes_to_read)
     lines = data.decode("utf-8").splitlines()
 
@@ -298,10 +306,30 @@ def get_buttons_from_serial():
         print(f"Serial: {line}")
         if line.startswith("BUTTONS:"):
             last_line = line
+        if line.startswith("COLOR:"):
+            color = line.replace("COLOR:", "")
+            match color:
+                case "g":
+                    GAME_STATE.CONTROLLER_COLOR = "green"
+                case "b":
+                    GAME_STATE.CONTROLLER_COLOR = "blue"
+        if line.startswith("CONNECTION:"):
+            state =  line.replace("CONNECTION:", "")
+            changed = GAME_STATE.CONTROLLER_CONNECTION_STATE != state
+            old_state = GAME_STATE.CONTROLLER_CONNECTION_STATE
+            GAME_STATE.CONTROLLER_CONNECTION_STATE = state
+            if changed:
+                if state == "LOST":
+                    result += [SERIAL_CONTROLLER_DC]
+                if state == "OK":
+                    if old_state == "LOST":
+                        result += [SERIAL_CONTROLLER_CN]
+
         if line == "":
             break
 
     if last_line != "":
+        GAME_STATE.CONTROLLER_LAST_RECEIVE = time.time();
         last_line = last_line.replace("BUTTONS:", "")
         for char in last_line:
             match char:
@@ -436,7 +464,7 @@ def main():
         GAME_STATE.CONTROLLER_COM_ADDR = port.device
         try:
             GAME_STATE.CONTROLLER_COM = serial.Serial(port=port.device, baudrate=9600, timeout=.1)
-            GAME_STATE.CONTROLLER_COM.write(bytes(f"serial on", 'utf-8'))
+            GAME_STATE.CONTROLLER_COM.write(bytes(f"serial on\n", 'utf-8'))
             GAME_STATE.CONTROLLER_COM.flush()
         except: # noqa
             GAME_STATE.CONTROLLER_COM = None
@@ -476,7 +504,7 @@ def main():
 
     if GAME_STATE.CONTROLLER_COM:
         # controller seems to get buggy on serial off ...
-        #GAME_STATE.CONTROLLER_COM.write(bytes(f"serial off", 'utf-8'))
+        #GAME_STATE.CONTROLLER_COM.write(bytes(f"serial off\n", 'utf-8'))
         #GAME_STATE.CONTROLLER_COM.flush()
         GAME_STATE.CONTROLLER_COM = None
 
@@ -589,6 +617,9 @@ def play_loop(serial_keys):
             return True
         if (key == pg.K_F8) or (key == pg.K_F11):
             replay(RECORDING)
+            return True
+        if key == SERIAL_CONTROLLER_DC:
+            GAME_STATE.CURRENT_MENU = MENU_FACTORY.ControllerConnection(None)
             return True
         return False
 

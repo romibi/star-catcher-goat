@@ -10,10 +10,9 @@ from gamelib.uielements import UiText, ImageIcon
 class NameEntryScreen(MenuScreen):
     MAX_NAME_LENGTH = 10
 
-    def __init__(self, state: GameState, confirm_callback, next_menu: MenuScreen):
-        MenuScreen.__init__(self, state, {})
+    def __init__(self, state: GameState, confirm_callback, next_menu: MenuScreen, other_menus):
+        MenuScreen.__init__(self, state, {}, next_menu=next_menu, other_menus=other_menus)
         self.confirm_callback = confirm_callback
-        self.next_menu = next_menu
 
         font = load_font(64, "PixelOperatorMono-Bold.ttf")
 
@@ -156,6 +155,7 @@ class NameEntryScreen(MenuScreen):
     def confirm(self):
         self.gamestate.PLAYER_NAME = self.name.strip() # don't allow spaces at end
         self.confirm_callback()
+        # we don't use self._close_menu() because we need to upgrade next menu background
         self.gamestate.CURRENT_MENU = self.next_menu
         # callback might update screen → update next menu background
         self.gamestate.CURRENT_MENU.background = self.gamestate.GAME_SCREEN.copy()
