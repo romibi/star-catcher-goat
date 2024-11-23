@@ -126,6 +126,57 @@ class Gamepad_Buttons():
             self.button_yellow.rect.left = 1120
             self.button_yellow.rect.top = 481
 
+
+    def show(self):
+        game_sprites = self.gamestate.GAME_SPRITES
+        game_ui_sprites = self.gamestate.GAME_UI_SPRITES
+
+        game_sprites.add(self.gamepad_sprite)
+        game_sprites.add(self.button_up)
+        game_sprites.add(self.button_select)
+        game_sprites.add(self.button_start)
+        game_sprites.add(self.button_left)
+        game_sprites.add(self.button_right)
+        game_sprites.add(self.button_red)
+        game_sprites.add(self.button_down)
+        game_sprites.add(self.button_yellow)
+
+        game_ui_sprites.add(self.gamepad_sprite)
+        game_ui_sprites.add(self.button_up)
+        game_ui_sprites.add(self.button_select)
+        game_ui_sprites.add(self.button_start)
+        game_ui_sprites.add(self.button_left)
+        game_ui_sprites.add(self.button_right)
+        game_ui_sprites.add(self.button_red)
+        game_ui_sprites.add(self.button_down)
+        game_ui_sprites.add(self.button_yellow)
+
+
+    def hide(self):
+        game_sprites = self.gamestate.GAME_SPRITES
+        game_ui_sprites = self.gamestate.GAME_UI_SPRITES
+
+        game_sprites.remove(self.gamepad_sprite)
+        game_sprites.remove(self.button_up)
+        game_sprites.remove(self.button_select)
+        game_sprites.remove(self.button_start)
+        game_sprites.remove(self.button_left)
+        game_sprites.remove(self.button_right)
+        game_sprites.remove(self.button_red)
+        game_sprites.remove(self.button_down)
+        game_sprites.remove(self.button_yellow)
+
+        game_ui_sprites.remove(self.gamepad_sprite)
+        game_ui_sprites.remove(self.button_up)
+        game_ui_sprites.remove(self.button_select)
+        game_ui_sprites.remove(self.button_start)
+        game_ui_sprites.remove(self.button_left)
+        game_ui_sprites.remove(self.button_right)
+        game_ui_sprites.remove(self.button_red)
+        game_ui_sprites.remove(self.button_down)
+        game_ui_sprites.remove(self.button_yellow)
+
+
     def update(self):
         # todo: where to call this from?
         self.frame += 1
