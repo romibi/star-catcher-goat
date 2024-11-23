@@ -26,7 +26,7 @@ class ControllerConnectionScreen(MenuScreen):
         menu_text_3.targetRect = Rect(60, 390, 300, 300)
         menu_text_3.font = load_font(42)
 
-        guide_image = ImageIcon(873, 454, [load_image('turn_on_controller_guide.png', 'ui')], self.sprites)
+        guide_image = ImageIcon(833, 454, [load_image('turn_on_controller_guide.png', 'ui')], self.sprites)
 
         self.gamestate.GAMEPAD_BUTTONS.hide()
 

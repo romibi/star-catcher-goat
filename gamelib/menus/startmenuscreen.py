@@ -23,6 +23,8 @@ class StartMenuScreen(MenuScreen):
         ButtonIcon(50, 85, [load_image(im, "buttons96") for im in ("button_black.png", "button_black_pressed.png")], self.sprites).frame = 12
         ButtonIcon(50, 185, [load_image(im, "buttons96") for im in ("button_white.png", "button_white_pressed.png")], self.sprites)
 
+        state.GAMEPAD_BUTTONS.set_mode("start")
+
         self.cursor.text = "" # no cursor
 
     def handle_key(self, key):

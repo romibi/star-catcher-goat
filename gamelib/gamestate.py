@@ -57,6 +57,8 @@ class GameState:
         for star in self.STARS:
             star.kill()
 
+        self.GAMEPAD_BUTTONS.set_mode("game")
+
         self.config.reset() # restore default values (in case recording replay manipulated them)
         self.config.COLUMNS = new_columns
 

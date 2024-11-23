@@ -57,6 +57,8 @@ class NameEntryScreen(MenuScreen):
 
         self.name = ""
 
+        self.gamestate.GAMEPAD_BUTTONS.set_mode("name")
+
         self.cursor.text = "" # no cursor
 
     def select_letter(self):
