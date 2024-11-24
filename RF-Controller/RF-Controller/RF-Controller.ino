@@ -330,12 +330,22 @@ int last_sent_count = 0;
 unsigned long last_sent_count_reset_time = 0;
 unsigned long last_sent_time = 0;
 
+int enter_charging_mode = 0;
+
 void loop() {
   int radiopacketPointer = 0;
   char radiopacket[20] = "";
 
   bool playing_melody;
   playing_melody = playMelodyLoop();
+
+  if ((!playing_melody) && (enter_charging_mode==4)) {
+    Serial.println("Ending Program: Charge Mode");
+    delay(20);
+    Serial.end();
+
+    exit(0);
+  }
 
   // Read Buttons
   curr_R = digitalRead(BTN_R)==LOW;
@@ -383,6 +393,43 @@ void loop() {
   //if(trigger_Y) playMelody(MELODY_TWINKLE);
   //if(trigger_START) playMelody(MELODY_FANFARE);
   //if(trigger_SELECT) playMelody(MELODY_CHEST);
+
+  if(enter_charging_mode==0) {
+    if (curr_RIGHT && curr_Y) {
+      enter_charging_mode += 1;
+      Serial.println("Chargemode Code 1 accepted");
+      playMelody(MELODY_POINT);
+    } else if (!(anyTrigger && (curr_RIGHT || curr_Y))) {
+      enter_charging_mode = 0;
+    }
+  } else if (enter_charging_mode==1) {
+    if (curr_LEFT && curr_R) {
+      enter_charging_mode += 1;
+      Serial.println("Chargemode Code 2 accepted");
+      playMelody(MELODY_TWINKLE);
+    } else if (anyTrigger && !(curr_LEFT || curr_R)) {
+      Serial.println("Chargemode Code reject");
+      enter_charging_mode = 0;
+    }
+  } else if (enter_charging_mode==2) {
+    if (curr_UP && curr_Y) {
+      enter_charging_mode += 1;
+      Serial.println("Chargemode Code 3 accepted");
+      playMelody(MELODY_FANFARE);
+    } else if (anyTrigger && !(curr_UP || curr_Y)) {
+      Serial.println("Chargemode Code reject");
+      enter_charging_mode = 0;
+    }
+  } else if (enter_charging_mode==3) {
+    if (curr_DOWN && curr_R) {
+      enter_charging_mode += 1;
+      Serial.println("Chargemode Code 4 accepted");
+      playMelody(MELODY_CHEST);
+    } else if (anyTrigger && !(curr_DOWN || curr_R)) {
+      Serial.println("Chargemode Code reject");
+      enter_charging_mode = 0;
+    }
+  }
   
   if (anyTrigger)
     tone(BUZZER, 45, 50);
