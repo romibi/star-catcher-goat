@@ -1,5 +1,6 @@
 import os
 import pickle
+import sys
 
 main_dir = os.path.split(os.path.abspath(__file__))[0]
 
@@ -153,6 +154,9 @@ def main():
     load_all_highscores()
     print_highscores()
     print("")
+    if (len(sys.argv)<2) or (sys.argv[1] != "-i"):
+        print("For interactive modification call with -i")
+        return
     while taskquery():
         print_highscores()
         print("")
