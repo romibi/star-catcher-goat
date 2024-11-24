@@ -483,7 +483,7 @@ def main():
     # reset before first loop to have same random starting condition as in replay
     GAME_STATE.reset(6)
 
-    GAME_STATE.CURRENT_MENU = MENU_FACTORY.StartMenu()
+    GAME_STATE.CURRENT_MENU = MENU_FACTORY.StartMenu(re_render_background)
 
     # Run our main loop whilst the player is alive.
     while GAME_STATE.PLAYER.alive() and not GAME_STATE.GAME_QUIT:
@@ -692,7 +692,7 @@ def play_loop(serial_keys):
         score_points.text = ""
         score_missed.text = ""
         score_stats.text = ""
-        GAME_STATE.CURRENT_MENU = MENU_FACTORY.NameEntry(update_and_save_recording)
+        GAME_STATE.CURRENT_MENU = MENU_FACTORY.NameEntry(update_and_save_recording, re_render_background)
 
     # re-draw whole background
     if GAME_STATE.MENU_JUST_CLOSED:

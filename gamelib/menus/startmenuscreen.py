@@ -1,3 +1,4 @@
+import pygame as pg
 from pygame import Rect
 
 from config.buttonconfig import SERIAL_BUTTON_START, SERIAL_BUTTON_SELECT
@@ -8,8 +9,10 @@ from gamelib.uielements import UiText, ButtonIcon
 
 
 class StartMenuScreen(MenuScreen):
-    def __init__(self, state: GameState, other_menus):
+    def __init__(self, state: GameState, other_menus, re_render_scores_callback):
         MenuScreen.__init__(self, state,{}, other_menus=other_menus, darken_bg=False)
+
+        self.re_render_scores = re_render_scores_callback
 
         normal_game_text = UiText(self.sprites)
         normal_game_text.text = "Normales Spiel starten"
@@ -38,3 +41,14 @@ class StartMenuScreen(MenuScreen):
             return True
         else:
             return MenuScreen.handle_key(self, key)
+
+    def loop(self, serial_keys):
+        # Switch High-Score List every 30s (self.frame starts at -1 → +2 to not swap in first 2 frames)
+        if (self.frame+2) % (self.gamestate.config.FRAME_RATE*30) == 0:
+            if self.gamestate.config.COLUMNS == 3:
+                self.gamestate.config.COLUMNS = 6
+            else:
+                self.gamestate.config.COLUMNS = 3
+            self.re_render_scores()
+            pg.display.flip()
+        MenuScreen.loop(self, serial_keys)

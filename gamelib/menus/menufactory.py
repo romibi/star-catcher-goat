@@ -196,11 +196,11 @@ class MenuFactory:
             {"controller_dc": self.ControllerConnection},
             next_menu=next_menu)
 
-    def StartMenu(self):
-        return StartMenuScreen(self.gamestate, {"controller_dc": self.ControllerConnection, "fullmenu": self.FullMenu})
+    def StartMenu(self, re_render_scores_callback):
+        return StartMenuScreen(self.gamestate, {"controller_dc": self.ControllerConnection, "fullmenu": self.FullMenu}, re_render_scores_callback)
 
-    def NameEntry(self, confirm_callback):
-        return NameEntryScreen(self.gamestate, confirm_callback, self.StartMenu(),
+    def NameEntry(self, confirm_callback, re_render_scores_callback):
+        return NameEntryScreen(self.gamestate, confirm_callback, self.StartMenu(re_render_scores_callback),
                                {"controller_dc": self.ControllerConnection, "fullmenu": self.FullMenu})
 
     def ControllerConnection(self, next_menu):
