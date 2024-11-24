@@ -20,11 +20,15 @@ class Gamepad_Buttons():
         # todo: make gamepad sprite non transparent? or why are (old?) sprites behind gamepad visible?
         self.gamepad_sprite = ImageIcon(753,398, [load_image('gamepad.png', 'ui')], (game_ui_sprites, game_sprites))
 
+        dcolor = self.gamestate.CONTROLLER_COLOR
+        if dcolor not in ["blue", "green"]:
+            dcolor = "blue"
+
         # gamepad buttons from back to front
         # noinspection PyTypeChecker
         self.button_up = ButtonIcon(920, 449,
                                     [load_image(im, "buttons32") for im in
-                                     ("button_blue_up.png", "button_blue_up_pressed.png")],
+                                     (f"button_{dcolor}_up.png", f"button_{dcolor}_up_pressed.png")],
                                     (game_ui_sprites, game_sprites)
                                     )
 
@@ -46,7 +50,7 @@ class Gamepad_Buttons():
         # noinspection PyTypeChecker
         self.button_left = ButtonIcon(894, 464,
                                       [load_image(im, "buttons32") for im in
-                                       ("button_blue_left.png", "button_blue_left_pressed.png")],
+                                       (f"button_{dcolor}_left.png", f"button_{dcolor}_left_pressed.png")],
                                       (game_ui_sprites, game_sprites)
                                       )
         self.button_left.frame = 6
@@ -54,7 +58,7 @@ class Gamepad_Buttons():
         # noinspection PyTypeChecker
         self.button_right = ButtonIcon(943, 464,
                                        [load_image(im, "buttons32") for im in
-                                        ("button_blue_right.png", "button_blue_right_pressed.png")],
+                                        (f"button_{dcolor}_right.png", f"button_{dcolor}_right_pressed.png")],
                                        (game_ui_sprites, game_sprites)
                                        )
         self.button_right.frame = 12
@@ -69,7 +73,7 @@ class Gamepad_Buttons():
         # noinspection PyTypeChecker
         self.button_down = ButtonIcon(914, 481,
                                       [load_image(im, "buttons32") for im in
-                                       ("button_blue_down.png", "button_blue_down_pressed.png")],
+                                       (f"button_{dcolor}_down.png", f"button_{dcolor}_down_pressed.png")],
                                       (game_ui_sprites, game_sprites)
                                       )
         self.button_down.frame = 24
