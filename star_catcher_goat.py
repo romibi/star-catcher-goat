@@ -699,7 +699,7 @@ def play_loop(serial_keys):
     if GAME_CONFIG.COLUMNS == 3:
         score_stats.text = f"Gefangen: {player.starsCatchedHorn: >2}"
     else:
-        score_stats.text = f"Gefangen: {player.starsCatchedHorn+player.starsCatchedButt: >2} (Mit Hörner: {player.starsCatchedHorn: >2})"
+        score_stats.text = f"Gefangen: {player.starsCatchedHorn+player.starsCatchedButt: >2} (Mit Hörnern: {player.starsCatchedHorn: >2})"
 
     score_missed.text = f"Verpasst: {GAME_STATE.StarsMissed: >2}"
 

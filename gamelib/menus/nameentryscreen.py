@@ -14,17 +14,19 @@ class NameEntryScreen(MenuScreen):
         MenuScreen.__init__(self, state, {}, next_menu=next_menu, other_menus=other_menus)
         self.confirm_callback = confirm_callback
 
-        font = load_font(64, "PixelOperatorMono-Bold.ttf")
+        font = load_font(64)
 
         info_text1 = UiText(self.sprites)
         info_text1.text = f"Du hast {state.PLAYER.points} Punkte erreicht!"
         info_text1.font = font
-        info_text1.targetRect = Rect(15, 15, 300, 64)
+        info_text1.targetRect = Rect(25, 15, 300, 64)
 
         info_text2 = UiText(self.sprites)
-        info_text2.text = f"Willst du dein Name eingeben?"
+        info_text2.text = f"Willst du deinen Name eingeben?"
         info_text2.font = font
-        info_text2.targetRect = Rect(15, 60, 300, 64)
+        info_text2.targetRect = Rect(25, 60, 300, 64)
+
+        font = load_font(64, "PixelOperatorMono-Bold.ttf")
 
         name_target_area = UiText(self.sprites)
         name_target_area.text = "_ " * self.MAX_NAME_LENGTH
