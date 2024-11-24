@@ -664,7 +664,7 @@ def play_loop(serial_keys):
                     player.jump([star for star in stars if star.hangingLow])
 
     # update score text:
-    points = max(((player.starsCatchedHorn*10)+player.starsCatchedButt-GAME_STATE.StarsMissed),0)
+    points = player.points
     score_points.text = f"{points}"
 
     if GAME_CONFIG.COLUMNS == 3:

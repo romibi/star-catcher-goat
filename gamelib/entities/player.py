@@ -103,6 +103,9 @@ class Player(pg.sprite.Sprite):
         elif self.facing > 0:
             self.gridPos = min(self.gridPos+1,maxGoatPos)
 
+    @property
+    def points(self):
+        return max(((self.starsCatchedHorn * 10) + self.starsCatchedButt - self.gamestate.StarsMissed), 0)
 
     def update(self):
         self.hornGlowIntensity = max(self.hornGlowIntensity-(1.0/20),0.0)

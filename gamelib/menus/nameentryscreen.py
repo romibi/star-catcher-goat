@@ -16,44 +16,54 @@ class NameEntryScreen(MenuScreen):
 
         font = load_font(64, "PixelOperatorMono-Bold.ttf")
 
+        info_text1 = UiText(self.sprites)
+        info_text1.text = f"Du hast {state.PLAYER.points} Punkte erreicht!"
+        info_text1.font = font
+        info_text1.targetRect = Rect(15, 15, 300, 64)
+
+        info_text2 = UiText(self.sprites)
+        info_text2.text = f"Willst du dein Name eingeben?"
+        info_text2.font = font
+        info_text2.targetRect = Rect(15, 60, 300, 64)
+
         name_target_area = UiText(self.sprites)
         name_target_area.text = "_ " * self.MAX_NAME_LENGTH
         name_target_area.font = font
-        name_target_area.targetRect = Rect(50, 50, 300, 64)
+        name_target_area.targetRect = Rect(50, 130, 300, 64)
 
         alphabet_letters1 = UiText(self.sprites)
         alphabet_letters1.text = "A B C D E F G H I J K L M"
         alphabet_letters1.font = font
-        alphabet_letters1.targetRect = Rect(50, 150, 300, 64)
+        alphabet_letters1.targetRect = Rect(50, 210, 300, 64)
 
         alphabet_letters2 = UiText(self.sprites)
         alphabet_letters2.text = "N O P Q R S T U V W X Y Z"
         alphabet_letters2.font = font
-        alphabet_letters2.targetRect = Rect(50, 210, 300, 64)
+        alphabet_letters2.targetRect = Rect(50, 270, 300, 64)
 
         alphabet_letters3 = UiText(self.sprites)
         alphabet_letters3.text = "Ä Ö Ü À É È . -"
         alphabet_letters3.font = font
-        alphabet_letters3.targetRect = Rect(50, 270, 300, 64)
+        alphabet_letters3.targetRect = Rect(50, 330, 300, 64)
 
         alphabet_btns = UiText(self.sprites)
         alphabet_btns.text = "Löschen    OK"
         alphabet_btns.font = load_font(40, "PixelOperator-Bold.ttf")
-        alphabet_btns.targetRect = Rect(630, 285, 50, 64)
+        alphabet_btns.targetRect = Rect(630, 345, 50, 64)
 
         self.selector_x = 0
         self.selector_y = 0
         self.selector_images_letters = [load_image(im, "ui") for im in ("selector0.png", "selector1.png")]
         self.selector_images_delete = [load_image(im, "ui") for im in ("selector_löschen0.png", "selector_löschen1.png")]
         self.selector_images_ok = [load_image(im, "ui") for im in ("selector_ok0.png", "selector_ok1.png")]
-        self.selector = ImageIcon(49, 161, self.selector_images_letters, self.sprites )
+        self.selector = ImageIcon(49, 221, self.selector_images_letters, self.sprites )
 
-        self.text_cursor = ImageIcon(49, 63, [load_image("selector1.png", "ui")], self.sprites)
+        self.text_cursor = ImageIcon(49, 143, [load_image("selector1.png", "ui")], self.sprites)
 
         self.name_sprite = UiText(self.sprites)
         self.name_sprite.text = ""
         self.name_sprite.font = font
-        self.name_sprite.targetRect = Rect(50,50,300,64)
+        self.name_sprite.targetRect = Rect(50,130,300,64)
 
         self.name = ""
 
@@ -151,7 +161,7 @@ class NameEntryScreen(MenuScreen):
             # left coord for all other letters
             self.selector.rect.left = 49 + self.selector_x * 64
         # top coordinate calculation is the same for all
-        self.selector.rect.top = 161 + self.selector_y * 60
+        self.selector.rect.top = 221 + self.selector_y * 60
 
 
     def confirm(self):
