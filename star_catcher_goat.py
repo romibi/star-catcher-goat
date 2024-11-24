@@ -505,6 +505,35 @@ def main():
             play_loop(serial_keys)
             GAME_STATE.MENU_JUST_CLOSED = False
 
+        ltime = time.localtime()
+        shutdowntext1 = ""
+        shutdowntext2 = ""
+
+        if (ltime.tm_hour == 21) and (ltime.tm_min >= 55):
+            shutdowntext1 = "Spiel fährt bald"
+            shutdowntext2 = "herunter! (22 Uhr)"
+        if (ltime.tm_hour == 22):
+            shutdowntext1 = "Spiel fährt jetzt"
+            shutdowntext2 = "herunter! ..."
+        if (len(shutdowntext1)>0):
+            # clear area for when flashing text is not there
+            background = pg.Surface(GAME_STATE.SCREEN_RECT.size)
+            shutdowntext_area = Rect(970,305,310,90)
+            background = pg.Surface((shutdowntext_area.width, shutdowntext_area.height))
+            background.fill("#515151")
+            GAME_STATE.GAME_SCREEN.blit(background, (shutdowntext_area.left, shutdowntext_area.top))
+
+            # render flashing shutdown text half the time
+            if (ltime.tm_sec%2==0):
+                shutdowntextfont = load_font(36)
+                shutdowntextimg1 = shutdowntextfont.render(shutdowntext1, 0, 'red')
+                shutdowntextimg2 = shutdowntextfont.render(shutdowntext2, 0, 'red')
+                GAME_STATE.GAME_SCREEN.blit(shutdowntextimg1, (975,310), shutdowntextimg1.get_rect())
+                GAME_STATE.GAME_SCREEN.blit(shutdowntextimg2, (975,345), shutdowntextimg2.get_rect())
+
+            # update Screen area where flashing text is
+            pg.display.update(shutdowntext_area)
+
         # cap the framerate at 10fps. Also called 10HZ or 10 times per second.
         clock.tick(GAME_CONFIG.FRAME_RATE)
 
