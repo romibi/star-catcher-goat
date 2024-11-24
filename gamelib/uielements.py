@@ -76,3 +76,24 @@ class ImageIcon(pg.sprite.Sprite):
 class ButtonIcon(ImageIcon):
     def __init__(self, x, y, images, *groups):
         ImageIcon.__init__(self, x, y, images, *groups)
+
+
+class LineSprite(ImageIcon):
+    def __init__(self, x, y, points, linethickness, color, *groups):
+        width = 0
+        height = 0
+        for point in points:
+            width = max(width, point[0])
+            height = max(height, point[1])
+        width += linethickness/2
+        height += linethickness/2
+        image = pg.surface.Surface((width, height), pg.SRCALPHA)
+
+        pg.draw.lines(image, color, False, points, linethickness)
+        for p in points:
+            pg.draw.circle(image, color, p, linethickness/2)
+
+        ImageIcon.__init__(self, x, y, [image], groups)
+        self.points = points
+        self.linethickness = linethickness
+        self.color = color

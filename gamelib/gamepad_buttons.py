@@ -3,7 +3,7 @@ from pygame import Rect
 from config.gameconfig import ScreenMode
 from gamelib.data_helper_functions import load_image, load_font
 from gamelib.gamestate import GameState
-from gamelib.uielements import ButtonIcon, ImageIcon, UiText
+from gamelib.uielements import ButtonIcon, ImageIcon, UiText, LineSprite
 
 
 class Gamepad_Buttons():
@@ -136,8 +136,32 @@ class Gamepad_Buttons():
 
         self.label_text_del = UiText((game_ui_sprites, game_sprites))
         self.label_text_del.text = "Löschen"
-        self.label_text_del.targetRect = Rect(1142,480,10,10)
-        self.label_text_del.font = font
+        self.label_text_del.targetRect = Rect(1142,482,10,10)
+        self.label_text_del.font = load_font(38)
+
+        self.start_info_text1 = UiText((game_ui_sprites, game_sprites))
+        self.start_info_text1.text = "Links/Rechts/Hüpfen"
+        self.start_info_text1.targetRect = Rect(820, 640, 10, 10)
+        self.start_info_text1.font = load_font(44)
+        self.start_info_text2 = UiText((game_ui_sprites, game_sprites))
+        self.start_info_text2.text = "erst nach Spielstart"
+        self.start_info_text2.targetRect = Rect(820, 670, 10, 10)
+        self.start_info_text2.font = load_font(44)
+
+        self.label_line_easy = LineSprite(840, 435, [(5, 5), (142, 5), (155, 15)], 5, 'white',(game_ui_sprites, game_sprites))
+        self.label_line_normal = LineSprite(1025, 435, [(5, 15), (18, 5), (140, 5)], 5, 'white',(game_ui_sprites, game_sprites))
+        self.label_line_left = LineSprite(760,480, [(5,25), (105,25), (130,5)], 5, 'white', (game_ui_sprites, game_sprites))
+        self.label_line_jump = LineSprite(760,460, [(5,10), (125,10), (155,5)], 5, 'white', (game_ui_sprites, game_sprites))
+        self.label_line_right = LineSprite(1134,480, [(5,5), (135,5)], 5, 'white', (game_ui_sprites, game_sprites))
+        self.label_line_right_l2 = LineSprite(975,460, [(5,25), (100,25), (120, 5), (152, 5), (172, 25)], 3, 'white', (game_ui_sprites, game_sprites))
+        self.label_line_jump2 = LineSprite(1105,495, [(10,5), (40,25), (165,25)], 5, 'white', (game_ui_sprites, game_sprites))
+
+        self.label_line_up = LineSprite(760, 460, [(5, 10), (88, 10), (93, 5), (155, 5)], 5, 'white',(game_ui_sprites, game_sprites))
+        self.label_line_down = LineSprite(760,510, [(5,30), (125,30), (170,5)], 5, 'white', (game_ui_sprites, game_sprites))
+        self.label_line_right2 = LineSprite(760, 495, [(5, 80), (125, 80), (200, 35), (200, 5)], 5, 'white',(game_ui_sprites, game_sprites))
+
+        self.label_line_ok = LineSprite(1134, 480, [(5, 5), (50, 5)], 5, 'white', (game_ui_sprites, game_sprites))
+        self.label_line_del = LineSprite(1105, 495, [(10, 5), (35, 25), (165, 25)], 5, 'white',(game_ui_sprites, game_sprites))
 
     def update_rects(self):
         if self.gamestate.screenMode == ScreenMode.GAME_BIG:
@@ -250,42 +274,85 @@ class Gamepad_Buttons():
 
         game_sprites.add(self.label_text_left)
         game_ui_sprites.add(self.label_text_left)
+        game_sprites.add(self.label_line_left)
+        game_ui_sprites.add(self.label_line_left)
 
         if mode == "start":
+            game_sprites.add(self.start_info_text1)
+            game_sprites.add(self.start_info_text2)
+            game_ui_sprites.add(self.start_info_text1)
+            game_ui_sprites.add(self.start_info_text2)
+
             game_sprites.add(self.label_text_easy)
             game_ui_sprites.add(self.label_text_easy)
+            game_sprites.add(self.label_line_easy)
+            game_ui_sprites.add(self.label_line_easy)
             game_sprites.add(self.label_text_normal)
             game_ui_sprites.add(self.label_text_normal)
+            game_sprites.add(self.label_line_normal)
+            game_ui_sprites.add(self.label_line_normal)
             game_sprites.add(self.label_text_jump)
             game_ui_sprites.add(self.label_text_jump)
+            game_sprites.add(self.label_line_jump)
+            game_ui_sprites.add(self.label_line_jump)
             game_sprites.add(self.label_text_jump2)
             game_ui_sprites.add(self.label_text_jump2)
+            game_sprites.add(self.label_line_jump2)
+            game_ui_sprites.add(self.label_line_jump2)
             game_sprites.add(self.label_text_right)
             game_ui_sprites.add(self.label_text_right)
+            game_sprites.add(self.label_line_right)
+            game_ui_sprites.add(self.label_line_right)
+            game_sprites.add(self.label_line_right_l2)
+            game_ui_sprites.add(self.label_line_right_l2)
+
         elif mode == "game":
             game_sprites.add(self.label_text_jump)
             game_ui_sprites.add(self.label_text_jump)
+            game_sprites.add(self.label_line_jump)
+            game_ui_sprites.add(self.label_line_jump)
             game_sprites.add(self.label_text_jump2)
             game_ui_sprites.add(self.label_text_jump2)
-
+            game_sprites.add(self.label_line_jump2)
+            game_ui_sprites.add(self.label_line_jump2)
             game_sprites.add(self.label_text_right)
             game_ui_sprites.add(self.label_text_right)
+            game_ui_sprites.add(self.label_text_right)
+            game_sprites.add(self.label_line_right)
+            game_ui_sprites.add(self.label_line_right)
+            game_sprites.add(self.label_line_right_l2)
+            game_ui_sprites.add(self.label_line_right_l2)
         elif mode == "name":
             game_sprites.add(self.label_text_up)
             game_ui_sprites.add(self.label_text_up)
+            game_sprites.add(self.label_line_up)
+            game_ui_sprites.add(self.label_line_up)
             game_sprites.add(self.label_text_down)
             game_ui_sprites.add(self.label_text_down)
+            game_sprites.add(self.label_line_down)
+            game_ui_sprites.add(self.label_line_down)
             game_sprites.add(self.label_text_right2)
             game_ui_sprites.add(self.label_text_right2)
+            game_sprites.add(self.label_line_right2)
+            game_ui_sprites.add(self.label_line_right2)
             game_sprites.add(self.label_text_ok)
             game_ui_sprites.add(self.label_text_ok)
+            game_sprites.add(self.label_line_ok)
+            game_ui_sprites.add(self.label_line_ok)
             game_sprites.add(self.label_text_del)
             game_ui_sprites.add(self.label_text_del)
+            game_sprites.add(self.label_line_del)
+            game_ui_sprites.add(self.label_line_del)
 
 
     def hide_labels(self):
         game_sprites = self.gamestate.GAME_SPRITES
         game_ui_sprites = self.gamestate.GAME_UI_SPRITES
+
+        game_sprites.remove(self.start_info_text1)
+        game_sprites.remove(self.start_info_text2)
+        game_ui_sprites.remove(self.start_info_text1)
+        game_ui_sprites.remove(self.start_info_text2)
 
         game_sprites.remove(self.label_text_easy)
         game_ui_sprites.remove(self.label_text_easy)
@@ -310,14 +377,39 @@ class Gamepad_Buttons():
         game_sprites.remove(self.label_text_del)
         game_ui_sprites.remove(self.label_text_del)
 
+        game_sprites.remove(self.label_line_easy)
+        game_ui_sprites.remove(self.label_line_easy)
+        game_sprites.remove(self.label_line_normal)
+        game_ui_sprites.remove(self.label_line_normal)
+        game_sprites.remove(self.label_line_left)
+        game_ui_sprites.remove(self.label_line_left)
+        game_sprites.remove(self.label_line_jump)
+        game_ui_sprites.remove(self.label_line_jump)
+
+        game_sprites.remove(self.label_line_right)
+        game_ui_sprites.remove(self.label_line_right)
+        game_sprites.remove(self.label_line_right_l2)
+        game_ui_sprites.remove(self.label_line_right_l2)
+
+        game_sprites.remove(self.label_line_jump2)
+        game_ui_sprites.remove(self.label_line_jump2)
+
+        game_sprites.remove(self.label_line_up)
+        game_ui_sprites.remove(self.label_line_up)
+        game_sprites.remove(self.label_line_down)
+        game_ui_sprites.remove(self.label_line_down)
+        game_sprites.remove(self.label_line_right2)
+        game_ui_sprites.remove(self.label_line_right2)
+        game_sprites.remove(self.label_line_ok)
+        game_ui_sprites.remove(self.label_line_ok)
+        game_sprites.remove(self.label_line_del)
+        game_ui_sprites.remove(self.label_line_del)
 
     def update(self):
         # todo: where to call this from?
         self.frame += 1
         if self.gamestate.screenMode != self.previous_screen_mode:
             self.update_rects()
-
-        # todo: add/render labels
 
         # self.button_up.update()
         # self.button_down.update()

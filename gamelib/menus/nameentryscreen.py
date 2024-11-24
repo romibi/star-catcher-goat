@@ -158,6 +158,7 @@ class NameEntryScreen(MenuScreen):
         self.gamestate.PLAYER_NAME = self.name.strip() # don't allow spaces at end
         self.confirm_callback()
         # we don't use self._close_menu() because we need to upgrade next menu background
+        self.gamestate.GAMEPAD_BUTTONS.set_mode("start") # next menu is start menu → make sure correct buttons are shown
         self.gamestate.CURRENT_MENU = self.next_menu
         # callback might update screen → update next menu background
         self.gamestate.CURRENT_MENU.background = self.gamestate.GAME_SCREEN.copy()
