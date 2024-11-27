@@ -22,7 +22,7 @@ class NameEntryScreen(MenuScreen):
         info_text1.targetRect = Rect(25, 15, 300, 64)
 
         info_text2 = UiText(self.sprites)
-        info_text2.text = f"Willst du deinen Name eingeben?"
+        info_text2.text = f"Willst du deinen Namen eingeben?"
         info_text2.font = font
         info_text2.targetRect = Rect(25, 60, 300, 64)
 
