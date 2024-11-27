@@ -18,11 +18,20 @@ I'm using an Raspberry PI 3
 - `source scg-venv/bin/activate`
 - `pip install pygame pyserial httpx`
 - Enable autologin using raspi-config
-- Add the following lines to .bashrc or .zshenv    
+- Add one of the following blocks to .bashrc or .zshenv    
 ```
 if [ "`tty`" = "/dev/tty1" ]; then
     source ~/scg-venv/bin/activate
     python3 ~/star-catcher-goat/star_catcher_goat.py
+fi
+```
+or
+```
+if [ "`tty`" = "/dev/tty1" ]; then
+    #tmux new-session -d -s star_catcher_goat '~/start_star_catcher_goat.sh'
+    tmux new-session -d -n 'star_catcher_goat'
+    tmux send-keys -t star_catcher_goat '~/start_star_catcher_goat.sh' Enter
+    tmux -2 attach0session -d
 fi
 ```
 
