@@ -8,7 +8,7 @@ Catch Stars as a Goat
 
 ## Setup RPi
 
-I'm using an old Raspberry PI 2 (unless it shows that it is not powerful enough)
+I'm using an Raspberry PI 3
 
 ### Install:
 - Raspberry Pi OS Lite (32-bit) 12 (bookworm)
@@ -16,7 +16,7 @@ I'm using an old Raspberry PI 2 (unless it shows that it is not powerful enough)
 - `sudo apt install libegl-dev python3-pip`
 - `python3 -m venv scg-venv`
 - `source scg-venv/bin/activate`
-- `pip install pygame grequests pyserial`
+- `pip install pygame pyserial httpx`
 - Enable autologin using raspi-config
 - Add the following lines to .bashrc or .zshenv    
 ```

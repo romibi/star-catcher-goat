@@ -1,8 +1,8 @@
+import httpx
+from httpx import Timeout
 import threading
-from multiprocessing.spawn import old_main_modules
-
-import grequests
 from pygame import Color
+from requests.packages import target
 
 from config.ledconfig import *
 from config.gameconfig import GameConfig
@@ -23,14 +23,17 @@ class LedHandler:
     STAR_BRIGHTNESS_B = 255 # row 3-5
     GOAT_BRIGHTNESS = 255
 
+    POST_TIMEOUT = Timeout(timeout=0.9)
+
     # todo: configure somewhere else?
     GOAT_POS_NUMS = 6
 
     # change color of segment 1 (0) to green: http://192.168.1.107/win&SM=0&SB=255&CL=H00FF00
-    API_ADDR = '/win'
-    API_ARG_SEGMENT = '&SM='
-    API_ARG_BRIGHTNESS = '&SB='
-    API_ARG_COLOR = '&CL=H'
+    #API_ADDR = '/win'
+    API_JSON_ADDR = '/json'
+    #API_ARG_SEGMENT = '&SM='
+    #API_ARG_BRIGHTNESS = '&SB='
+    #API_ARG_COLOR = '&CL=H'
 
 
     # Segment map for when only halve the stars are wired:
@@ -138,45 +141,38 @@ class LedHandler:
     def add_goat_hub(self, num, address):
         self.goat_hubs[num] = address
 
-
-    def get_star_hub(self, row, column):
+    def get_star_hub_number(self, row, column):
         if self.ledSegmentMap:
             segment = self.ledSegmentMap[row][column]
             hub = segment["hub"]
+            return hub
+        return None
+
+
+    def get_star_segment_number(self, row, column):
+        segment = self.ledSegmentMap[row][column]
+        return segment["segment"]
+
+    def get_star_hub(self, row, column):
+        hub = self.get_star_hub_number(row, column)
+        if hub:
             return self.hubs.get(hub, None)
         return ''
 
-    def get_goat_hub(self, pos):
+    def get_goat_hub_number(self, pos):
         if self.goatSegmentMap:
             hub = self.goatSegmentMap[pos]["hub"]
+            return hub
+        return None
+
+    def get_goat_hub(self, pos):
+        hub = self.get_goat_hub_number(pos)
+        if hub:
             return self.goat_hubs.get(hub, None)
         return ''
 
-
-    def get_led_api_url(self, row, column, bright, color):
-        hub = self.get_star_hub(row, column)
-        if not hub:
-            return None
-  
-        segment = self.ledSegmentMap[row][column]
-
-        return f'http://{hub}{self.API_ADDR}{self.API_ARG_SEGMENT}{segment["segment"]}{self.API_ARG_BRIGHTNESS}{bright}{self.API_ARG_COLOR}{color}&SV=2'
-
-
-    def get_goat_led_api_urls(self, pos, body, horn, bright, body_color, horn_color):
-        hub = self.get_goat_hub(pos)
-        if not hub:
-            return None
-
-        urls = []
-        if body:
-            for segment in self.goatSegmentMap[pos]["body_segments"]:
-                urls += [f'http://{hub}{self.API_ADDR}{self.API_ARG_SEGMENT}{segment}{self.API_ARG_BRIGHTNESS}{bright}{self.API_ARG_COLOR}{body_color}&SV=2']
-        if horn:
-            for segment in self.goatSegmentMap[pos]["horn_segments"]:
-                urls += [f'http://{hub}{self.API_ADDR}{self.API_ARG_SEGMENT}{segment}{self.API_ARG_BRIGHTNESS}{bright}{self.API_ARG_COLOR}{horn_color}&SV=2']
-
-        return urls
+    def get_led_api_url(self, hub):
+        return f'http://{hub}{self.API_JSON_ADDR}'
 
 
     def set_star_led(self, row, column, bright, color=None):
@@ -231,91 +227,148 @@ class LedHandler:
                 goat['bright'] = new_brightness_g
 
 
-    def collect_star_update_call_urls(self):
-        urls = []
-        for row, starRow in self.stars.items():
-            for column, star in starRow.items():
-                led = self.leds[row][column]
+    def collect_star_update_calls(self):
+        posts = []
+        for hub, addr in self.hubs.items():
+            url = self.get_led_api_url(addr)
+            data = ""
 
-                star_brightness = star.get('bright', 0)
+            for row, starRow in self.stars.items():
+                for column, star in starRow.items():
+                    star_hub = self.get_star_hub_number(row, column)
+                    if star_hub != hub:
+                        continue
+
+                    led = self.leds[row][column]
+
+                    star_brightness = star.get('bright', 0)
+                    led_brightness = led.get('bright', None)
+
+                    star_color = star.get('color', self.STAR_COLOR)
+                    led_color = led.get('color', None)
+
+                    if (star_brightness == led_brightness) and (star_color == led_color):
+                        continue
+
+                    self.leds[row][column]['bright'] = star_brightness
+                    self.leds[row][column]['color'] = star_color
+
+                    segment = self.get_star_segment_number(row, column)
+
+                    if data != "":
+                        data += ","
+                    data += f"{{'id':{segment}"
+
+                    if star_brightness != led_brightness:
+                        data += f",'bri':{star_brightness}"
+                    if star_color != led_color:
+                        data += f",'col':['{star_color}']"
+                    data += "}"
+
+            if data != "":
+                data = f"{{'seg':[{data}]}}"
+                posts += [(url,data)]
+        return posts
+
+    def collect_goat_update_calls(self):
+        posts = []
+        for hub, hubaddr in self.goat_hubs.items():
+            url = self.get_led_api_url(hubaddr)
+            data = ""
+
+            for pos, goat in self.goats.items():
+                goat_hub = self.get_goat_hub_number(pos)
+                if goat_hub != hub:
+                    continue
+
+                led = self.goat_leds[pos]
+
+                goat_brightness = goat.get('bright', 0)
                 led_brightness = led.get('bright', None)
 
-                star_color = star.get('color', self.STAR_COLOR)
-                led_color = star.get('color', None)
+                goat_body_color = goat.get('body_color', self.GOAT_BODY_COLOR)
+                led_body_color = led.get('body_color', None)
 
-                if (star_brightness == led_brightness) and (star_color == led_color):
+                goat_horn_color = goat.get('horn_color', self.GOAT_HORN_COLOR)
+                led_horn_color = led.get('horn_color', None)
+
+                if (goat_brightness == led_brightness) and (goat_horn_color == led_horn_color) and (
+                        goat_body_color == led_body_color):
                     continue
 
-                self.leds[row][column]['bright'] = star_brightness
-                self.leds[row][column]['color'] = star_color
+                self.goat_leds[pos]['bright'] = goat_brightness
+                self.goat_leds[pos]['body_color'] = goat_body_color
+                self.goat_leds[pos]['horn_color'] = goat_horn_color
 
-                api_url = self.get_led_api_url(row, column, star_brightness, star_color)
-                if not api_url:
-                    continue
+                update_body = (goat_brightness != led_brightness) or (goat_body_color != led_body_color)
+                update_horn = (goat_brightness != led_brightness) or (goat_horn_color != led_horn_color)
 
-                urls += [api_url]
-                # print(f"Adding url for star row: {row} column: {column} to request: {api_url}")
-        return urls
+                if update_body:
+                    for segment in self.goatSegmentMap[pos]["body_segments"]:
+                        if data != "":
+                            data += ","
+                        data += f"{{'id':{segment}"
 
+                        if goat_brightness != led_brightness:
+                            data += f",'bri':{goat_brightness}"
+                        if goat_body_color != led_body_color:
+                            data += f",'col':['{goat_body_color}']"
+                        data += "}"
 
-    def collect_goat_update_call_urls(self):
-        urls = []
-        for pos, goat in self.goats.items():
-            led = self.goat_leds[pos]
+                if update_horn:
+                    for segment in self.goatSegmentMap[pos]["horn_segments"]:
+                        if data != "":
+                            data += ","
+                        data += f"{{'id':{segment}"
 
-            goat_brightness = goat.get('bright', 0)
-            led_brightness = led.get('bright', None)
-
-            goat_body_color = goat.get('body_color', self.GOAT_BODY_COLOR)
-            led_body_color = led.get('body_color', None)
-
-            goat_horn_color = goat.get('horn_color', self.GOAT_HORN_COLOR)
-            led_horn_color = led.get('horn_color', None)
-
-            if (goat_brightness == led_brightness) and (goat_horn_color == led_horn_color) and (
-                    goat_body_color == led_body_color):
-                continue
-
-            self.goat_leds[pos]['bright'] = goat_brightness
-            self.goat_leds[pos]['body_color'] = goat_body_color
-            self.goat_leds[pos]['horn_color'] = goat_horn_color
-
-            update_body = (goat_brightness != led_brightness) or (goat_body_color != led_body_color)
-            update_horn = (goat_brightness != led_brightness) or (goat_horn_color != led_horn_color)
-
-            api_urls = self.get_goat_led_api_urls(pos, update_body, update_horn, goat_brightness, goat_body_color,
-                                                  goat_horn_color)
-            if not api_urls:
-                continue
-            urls += api_urls
-        return urls
+                        if goat_brightness != led_brightness:
+                            data += f",'bri':{goat_brightness}"
+                        if goat_horn_color != led_horn_color:
+                            data += f",'col':['{goat_horn_color}']"
+                        data += "}"
+            if data != "":
+                data = f"{{'seg':[{data}]}}"
+                posts += [(url,data)]
+        return posts
 
 
     def update_leds(self, update_stars=True, update_goats=True):
         if self.active == 0:
             return
 
-        urls = []
+        urls = [] # todo weg
+        posts = []
 
         if update_stars:
-            urls += self.collect_star_update_call_urls()
+            posts += self.collect_star_update_calls()
 
         if update_goats:
-            urls += self.collect_goat_update_call_urls()
+            posts += self.collect_goat_update_calls()
 
-        rs = (grequests.get(u, timeout=5) for u in urls)
+        def do_single_post(post, exception_handler):
+            try:
+                #print(f"posting to {post[0]}: {post[1]}")
+                resp = httpx.post(post[0], data=post[1], timeout=self.POST_TIMEOUT)
+                #print(resp)
+                resp.close()
+            except Exception as e:
+                #print(e)
+                if exception_handler:
+                    exception_handler(post, e)
 
-        # noinspection PyShadowingNames
-        def call_map(rs, exception_handler):
-            grequests.map(rs, exception_handler=exception_handler)
+        def do_multiple_posts(posts, exception_handler):
+            for post in posts:
+                do_single_post(post, exception_handler)
 
+        def disable_on_exception_handler(post, exception):
+            self.active = 0
+
+        active_exception_handler = None
         if self.active == -1:
             self.active = 1
+            # active_exception_handler = disable_on_exception_handler
 
-            # noinspection PyUnusedLocal
-            def exception_handler(request, exception):
-                self.active = 0            
-            threading.Thread(target=call_map, args=(rs,exception_handler)).start()
-        else:
-            threading.Thread(target=call_map, args=(rs,None)).start()
-
+        #for post in posts:
+        #    # todo: use task groups
+        #    threading.Thread(target=do_single_post, args=(post, active_exception_handler)).start()
+        threading.Thread(target=do_multiple_posts, args=(posts, active_exception_handler)).start()
