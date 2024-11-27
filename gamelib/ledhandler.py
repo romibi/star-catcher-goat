@@ -1,8 +1,7 @@
+from pygame import Color
 import httpx
 from httpx import Timeout
-import threading
-from pygame import Color
-from requests.packages import target
+import asyncio
 
 from config.ledconfig import *
 from config.gameconfig import GameConfig
@@ -86,11 +85,10 @@ class LedHandler:
     goats = {}
     goat_leds = {}
 
-    # todo: add goat leds
-
     def __init__(self, game_config: GameConfig):
         self.game_config = game_config
         self.active = -1 # 0: no, 1: yes, -1: active unless first request fails
+        self.httpasyncclient = httpx.AsyncClient(timeout=0.9)
         self.reset()
 
 
@@ -336,7 +334,6 @@ class LedHandler:
         if self.active == 0:
             return
 
-        urls = [] # todo weg
         posts = []
 
         if update_stars:
@@ -345,20 +342,24 @@ class LedHandler:
         if update_goats:
             posts += self.collect_goat_update_calls()
 
-        def do_single_post(post, exception_handler):
+
+        async def do_single_post_async(post, exception_handler):
             try:
                 #print(f"posting to {post[0]}: {post[1]}")
-                resp = httpx.post(post[0], data=post[1], timeout=self.POST_TIMEOUT)
+                resp = await self.httpasyncclient.post(post[0], data=post[1])
                 #print(resp)
-                resp.close()
+                # resp.close()
             except Exception as e:
                 #print(e)
                 if exception_handler:
                     exception_handler(post, e)
 
-        def do_multiple_posts(posts, exception_handler):
+        async def do_multiple_posts_async(posts, exceptionhandler):
+            tasks = []
             for post in posts:
-                do_single_post(post, exception_handler)
+                tasks.append(asyncio.create_task(do_single_post_async(post, exceptionhandler)))
+            for task in tasks:
+                await task
 
         def disable_on_exception_handler(post, exception):
             self.active = 0
@@ -366,9 +367,6 @@ class LedHandler:
         active_exception_handler = None
         if self.active == -1:
             self.active = 1
-            # active_exception_handler = disable_on_exception_handler
+            active_exception_handler = disable_on_exception_handler
 
-        #for post in posts:
-        #    # todo: use task groups
-        #    threading.Thread(target=do_single_post, args=(post, active_exception_handler)).start()
-        threading.Thread(target=do_multiple_posts, args=(posts, active_exception_handler)).start()
+        asyncio.run(do_multiple_posts_async(posts,active_exception_handler))
