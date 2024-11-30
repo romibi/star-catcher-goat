@@ -142,7 +142,9 @@ String last_color_state = "COLOR:g";
 String last_button_state = "BUTTONS:";
 
 void loop() {
+  // ###################################################################
   // parse commands from serial
+  // ###################################################################
   if(Serial.available()>0) {
     String command = Serial.readStringUntil('\n');
     command.trim();
@@ -199,8 +201,11 @@ void loop() {
     }
   }
 
-  // receive data from RF
-  if (rf69_manager.available()) {
+  // ###################################################################
+  // receive data from RF (and print to Serial if use Serial)
+  // ###################################################################
+  //if (rf69_manager.available()) {
+  if (rf69_manager.waitAvailableTimeout(MIN_DELAY)) {
     // Wait for a message addressed to us from the client
     uint8_t len = sizeof(buf);
     uint8_t from;
@@ -242,10 +247,16 @@ void loop() {
         Serial.println(serial_out);
         last_color_state = serial_out;
       } else if(USE_SERIAL) {
+  // ###################################################################
+  // USE_SERIAL: print received data to serial
+  // ###################################################################
         String serial_out = "BUTTONS:"+String((char*)buf);
         Serial.println(serial_out);
         last_button_state = serial_out;
       } else {
+  // ###################################################################
+  // Not USE_SERIAL: convert received data to buttons
+  // ###################################################################
 
         Serial.print("RFM69 Got packet from #"); Serial.print(from);
         Serial.print(" [RSSI :");
@@ -291,6 +302,9 @@ void loop() {
           }
         }
       }
+  // ###################################################################
+  // Detect Connection Instability/Lost
+  // ###################################################################
     } else {
       bool print = !connection_state.equals("CONNECTION:UNSTABLE");
       connection_state = "CONNECTION: UNSTABLE";
@@ -306,6 +320,11 @@ void loop() {
       }
     }
   }
+
+  
+  // ###################################################################
+  // Not Serial: Send Button Presses
+  // ###################################################################
   if(!USE_SERIAL) {
     // update button states
     trigger_R = (!last_R) && curr_R;
@@ -356,5 +375,5 @@ void loop() {
     last_RIGHT = curr_RIGHT;
   }
 
-  delay(MIN_DELAY);
+  //delay(MIN_DELAY);
 }
