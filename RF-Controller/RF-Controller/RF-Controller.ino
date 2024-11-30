@@ -5,6 +5,18 @@
 String CONTROLLER_COLOR = "g";
 // String CONTROLLER_COLOR = "b";
 
+// ============
+// Constants RF
+// ============
+#define RF69_FREQ 433.0
+
+// Who am i?
+#define MY_ADDRESS   2
+//#define MY_ADDRESS   3
+
+// Where to send packets to!
+#define DEST_ADDRESS 1
+
 // ====
 // PINS
 // ====
@@ -23,17 +35,6 @@ String CONTROLLER_COLOR = "g";
 #define BTN_DOWN A1
 
 #define BUZZER A0
-
-// ============
-// Constants RF
-// ============
-#define RF69_FREQ 433.0
-
-// Who am i?
-#define MY_ADDRESS   2
-
-// Where to send packets to!
-#define DEST_ADDRESS 1
 
 // ===============
 // Constants Logic
@@ -263,8 +264,8 @@ void setup() {
   rf69.setTxPower(20, true);  // range from 14-20 for power, 2nd arg must be true for 69HCW
 
   // The encryption key has to be the same as the one in the client
-  uint8_t key[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
-                    0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
+  uint8_t key[] = { 0x53, 0x74, 0x61, 0x72, 0x43, 0x31, 0x74, 0x63,
+                    0x68, 0x65, 0x72, 0x7C, 0x47, 0x6F, 0x61, 0x74 };
   rf69.setEncryptionKey(key);
 
   Serial.print("RFM69 radio @");  Serial.print((int)RF69_FREQ);  Serial.println(" MHz");
