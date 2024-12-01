@@ -222,8 +222,8 @@ void loop() {
       if(csb_send_index!=csb_add_index) {
         String commands = "";
         while(csb_send_index!=csb_add_index) {
-          commands += command_send_buffer[csb_send_index] + ";" ;
           csb_send_index = (csb_send_index + 1) % command_send_buffer_size;
+          commands += command_send_buffer[csb_send_index] + ";" ;
         }
         commands.trim();
         commands = commands.substring(0, commands.length() - 1);
