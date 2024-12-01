@@ -184,7 +184,7 @@ class MenuFactory:
     # todo: maybe fix warnings
     def FullMenu(self, next_menu=None):  # noqa
         return MenuScreen(self.gamestate,
-            {"Zurück zum Spiel": self._close_menu,
+            {"Zurück zum Spiel": "close_menu",
              self._led_text: self._led_toggle_active,
              self._led_brightness_text: self._led_brightness,
              self._controller_text: self._controller_action,

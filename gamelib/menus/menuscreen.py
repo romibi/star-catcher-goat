@@ -65,7 +65,12 @@ class MenuScreen:
         if key in BUTTONS_MENU_CONFIRM + BUTTONS_MENU_LEFT + BUTTONS_MENU_RIGHT + BUTTONS_MENU_DENY:
             menu_functions = list(self.menuOptionMap.values())
             if (self.cursorIndex >= 0) and (len(menu_functions) > self.cursorIndex):
-                menu_functions[self.cursorIndex](key)
+                menu_function = menu_functions[self.cursorIndex]
+                if callable(menu_function):
+                    menu_function(key)
+                elif menu_function == "close_menu":
+                    self._close_menu()
+                    return True
         if key == SERIAL_CONTROLLER_DC:
             if "controller_dc" in self.other_menus:
                 self.gamestate.CURRENT_MENU = self.other_menus["controller_dc"](self)
