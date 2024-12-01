@@ -20,15 +20,15 @@ class Gamepad_Buttons():
         # todo: make gamepad sprite non transparent? or why are (old?) sprites behind gamepad visible?
         self.gamepad_sprite = ImageIcon(753,398, [load_image('gamepad.png', 'ui')], (game_ui_sprites, game_sprites))
 
-        dcolor = self.gamestate.CONTROLLER_COLOR
-        if dcolor not in ["blue", "green"]:
-            dcolor = "blue"
+        self.dpad_color = self.gamestate.CONTROLLER_COLOR
+        if self.dpad_color not in ["blue", "green"]:
+            self.dpad_color = "blue"
 
         # gamepad buttons from back to front
         # noinspection PyTypeChecker
         self.button_up = ButtonIcon(920, 449,
                                     [load_image(im, "buttons32") for im in
-                                     (f"button_{dcolor}_up.png", f"button_{dcolor}_up_pressed.png")],
+                                     (f"button_{self.dpad_color}_up.png", f"button_{self.dpad_color}_up_pressed.png")],
                                     (game_ui_sprites, game_sprites)
                                     )
 
@@ -50,7 +50,7 @@ class Gamepad_Buttons():
         # noinspection PyTypeChecker
         self.button_left = ButtonIcon(894, 464,
                                       [load_image(im, "buttons32") for im in
-                                       (f"button_{dcolor}_left.png", f"button_{dcolor}_left_pressed.png")],
+                                       (f"button_{self.dpad_color}_left.png", f"button_{self.dpad_color}_left_pressed.png")],
                                       (game_ui_sprites, game_sprites)
                                       )
         self.button_left.frame = 6
@@ -58,7 +58,7 @@ class Gamepad_Buttons():
         # noinspection PyTypeChecker
         self.button_right = ButtonIcon(943, 464,
                                        [load_image(im, "buttons32") for im in
-                                        (f"button_{dcolor}_right.png", f"button_{dcolor}_right_pressed.png")],
+                                        (f"button_{self.dpad_color}_right.png", f"button_{self.dpad_color}_right_pressed.png")],
                                        (game_ui_sprites, game_sprites)
                                        )
         self.button_right.frame = 12
@@ -73,7 +73,7 @@ class Gamepad_Buttons():
         # noinspection PyTypeChecker
         self.button_down = ButtonIcon(914, 481,
                                       [load_image(im, "buttons32") for im in
-                                       (f"button_{dcolor}_down.png", f"button_{dcolor}_down_pressed.png")],
+                                       (f"button_{self.dpad_color}_down.png", f"button_{self.dpad_color}_down_pressed.png")],
                                       (game_ui_sprites, game_sprites)
                                       )
         self.button_down.frame = 24
@@ -240,6 +240,33 @@ class Gamepad_Buttons():
 
         self.show_labels(self.show_labels_mode)
 
+    def set_button_paused_state(self, mode):
+        self.button_up.paused = True
+        self.button_down.paused = True
+        self.button_left.paused = True
+        self.button_right.paused = True
+        self.button_start.paused = True
+        self.button_select.paused = True
+        self.button_red.paused = True
+        self.button_yellow.paused = True
+
+        if mode == "start":
+            self.button_start.paused = False
+            self.button_select.paused = False
+        elif mode == "game":
+            self.button_left.paused = False
+            self.button_right.paused = False
+            self.button_up.paused = False
+            self.button_red.paused = False
+            self.button_yellow.paused = False
+        elif mode == "name":
+            self.button_up.paused = False
+            self.button_down.paused = False
+            self.button_left.paused = False
+            self.button_right.paused = False
+            self.button_red.paused = False
+            self.button_yellow.paused = False
+
 
     def hide(self):
         game_sprites = self.gamestate.GAME_SPRITES
@@ -270,6 +297,35 @@ class Gamepad_Buttons():
     def set_mode(self, mode):
         self.show_labels_mode = mode
         self.show_labels(mode)
+        self.set_button_paused_state(mode)
+        self.update_dpad_color()
+
+    def update_dpad_color(self):
+        if self.dpad_color == self.gamestate.CONTROLLER_COLOR:
+            return
+        self.dpad_color = self.gamestate.CONTROLLER_COLOR
+        if self.dpad_color not in ["blue", "green"]:
+            self.dpad_color = "blue"
+
+        self.button_up.images = [
+            load_image(im, "buttons32") for im in
+                (f"button_{self.dpad_color}_up.png", f"button_{self.dpad_color}_up_pressed.png")
+        ]
+
+        self.button_down.images = [
+            load_image(im, "buttons32") for im in
+                (f"button_{self.dpad_color}_down.png", f"button_{self.dpad_color}_down_pressed.png")
+        ]
+
+        self.button_left.images = [
+            load_image(im, "buttons32") for im in
+                (f"button_{self.dpad_color}_left.png", f"button_{self.dpad_color}_left_pressed.png")
+        ]
+
+        self.button_right.images = [
+            load_image(im, "buttons32") for im in
+                (f"button_{self.dpad_color}_right.png", f"button_{self.dpad_color}_right_pressed.png")
+        ]
 
     def show_labels(self, mode):
         game_sprites = self.gamestate.GAME_SPRITES
