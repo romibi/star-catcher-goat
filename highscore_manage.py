@@ -6,6 +6,9 @@ main_dir = os.path.split(os.path.abspath(__file__))[0]
 
 HIGHSCORES_EASY = []
 HIGHSCORES_NORMAL = []
+SHOW_RECORDING_FILEPATH = False
+SHOW_ORIG_NAME = False
+SHOW_STATS = False
 
 def load_highscores(name):
     try:
@@ -45,17 +48,38 @@ def persist_highscores(name, highscores):
     except Exception as ex:
         print("Error during pickling object (Possibly unsupported):", ex)
 
+
+def print_entry(entry, pos=None, mode="normal"):
+    original_name = ""
+    if "original_name" in entry:
+        if SHOW_ORIG_NAME:
+            original_name = f" (Eingegebener Name: {entry["original_name"]})"
+        else:
+            original_name = f" (Name modifiziert)"
+    if pos:
+        highscore_text = f"{pos: >2}. "
+    else:
+        highscore_text = "    "
+    catch_stats = ""
+    if SHOW_STATS and "horn_catches" in entry:
+        if mode=="easy":
+            catch_stats = f" (Gefangen: {entry["horn_catches"]}, Verpasst: {entry["missed"]})"
+        else:
+            catch_stats = f" (Horn: {entry["horn_catches"]}, Total {entry["horn_catches"]+entry["body_catches"]}, Verpasst: {entry["missed"]})"
+    file = ""
+    if SHOW_RECORDING_FILEPATH:
+        file = f" {entry["recording_filename"]}"
+    highscore_text += f"{entry['points']: >4} Punkte: {entry['name']: <10} am {entry['timestamp'].strftime('%d.%m.%Y %H:%M')}{catch_stats}{file}{original_name}"
+    print(highscore_text)
+
+
 def print_highscores(amount=10):
     print("HIGHSCORE Normal:")
 
     for x in range(amount):
         if x < len(HIGHSCORES_NORMAL):
             entry = HIGHSCORES_NORMAL[x]
-            original_name = ""
-            if "original_name" in entry:
-                original_name = f" ({entry["original_name"]})"
-            highscoretext = f"{x + 1: >2}. {entry['points']: >4} Punkte: {entry['name']: <10} am {entry['timestamp'].strftime('%d.%m.%Y %H:%M')}{original_name}"
-            print(highscoretext)
+            print_entry(entry,  x+1)
 
     print("")
 
@@ -63,19 +87,11 @@ def print_highscores(amount=10):
     for x in range(amount):
         if x < len(HIGHSCORES_EASY):
             entry = HIGHSCORES_EASY[x]
-            original_name = ""
-            if "original_name" in entry:
-                original_name = f" ({entry["original_name"]})"
-            highscoretext = f"{x + 1: >2}. {entry['points']: >4} Punkte: {entry['name']: <10} am {entry['timestamp'].strftime('%d.%m.%Y %H:%M')}{original_name}"
-            print(highscoretext)
+            print_entry(entry, x+1, "easy")
 
 def editEntry(list, index):
     entry = list[index]
-    original_name = ""
-    if "original_name" in entry:
-        original_name = f" ({entry["original_name"]})"
-    highscoretext = f"{index + 1: >2}. {entry['points']: >4} Punkte: {entry['name']: <10} am {entry['timestamp'].strftime('%d.%m.%Y %H:%M')}{original_name}"
-    print(highscoretext)
+    print_entry(entry, index+1)
     print("Currently only editing name supported. Enter new Name:")
     newName = input()
     if not "original_name" in list[index]:
@@ -97,11 +113,7 @@ def edit():
 
 def deleteEntry(list, index):
     entry = list[index]
-    original_name = ""
-    if "original_name" in entry:
-        original_name = f" ({entry["original_name"]})"
-    highscoretext = f"{index + 1: >2}. {entry['points']: >4} Punkte: {entry['name']: <10} am {entry['timestamp'].strftime('%d.%m.%Y %H:%M')}{original_name}"
-    print(highscoretext)
+    print_entry(entry, index+1)
     print("Delete this entry? (y/n)")
     if input()=="y":
         list.remove(list[index])
@@ -110,7 +122,6 @@ def deleteFrom(list):
     print("Which entry to edit?:")
     index = int(input())
     deleteEntry(list, index-1)
-
 
 def delete():
     print("From which Highscore List to delete? (n=normal, e=easy)")
@@ -130,7 +141,7 @@ def save():
         persist_highscores("highscores_easy.pickle", HIGHSCORES_EASY)
 
 def taskquery():
-    print("Action? (e=edit, d=delete, s=save, l=reload, q=quit)")
+    print("Action? (e=edit, d=delete, s=save, l=reload, q=quit, f=show/hide recording file path, o=orig name on/off)")
     action = input()
     if action == "q":
         return False
@@ -146,17 +157,45 @@ def taskquery():
     if action == "l":
         load_all_highscores()
         return  True
+    if action == "f":
+        global SHOW_RECORDING_FILEPATH
+        SHOW_RECORDING_FILEPATH = not SHOW_RECORDING_FILEPATH
+    if action == "o":
+        global SHOW_ORIG_NAME
+        SHOW_ORIG_NAME = not SHOW_ORIG_NAME
     print("Unknown action")
     return True
 
 
 def main():
+    interactive = False
+    for arg in sys.argv:
+        if arg == "-i":
+            interactive = True
+        if arg == "-o":
+            global SHOW_ORIG_NAME
+            SHOW_ORIG_NAME = True
+        if arg == "-f":
+            global SHOW_RECORDING_FILEPATH
+            SHOW_RECORDING_FILEPATH = True
+        if  arg == "-s":
+            global SHOW_STATS
+            SHOW_STATS = True
+        if arg == "-h" or arg == "--help":
+            print(f"{sys.argv[0]} -i → Interaktiv")
+            print(f"{sys.argv[0]} -o → Originale Namen anzeigen")
+            print(f"{sys.argv[0]} -f → Datei-Pfade anzeigen")
+            print(f"{sys.argv[0]} -s → Punkt-Details anzeigen (Horn/Total/Verpasst)")
+            print(f"{sys.argv[0]} -h → Diese Hilfe anzeigen")
+            return
+
     load_all_highscores()
     print_highscores()
     print("")
-    if (len(sys.argv)<2) or (sys.argv[1] != "-i"):
-        print("For interactive modification call with -i")
+
+    if not interactive:
         return
+
     while taskquery():
         print_highscores()
         print("")
