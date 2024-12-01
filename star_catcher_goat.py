@@ -116,13 +116,13 @@ def get_highscore_pos(points, mode):
         pos += 1
     return pos
 
-def add_highscore(points, name, mode, recording_filename):
+def add_highscore(points, name, mode, recording_filename, horn_catches, body_catches, missed):
     global HIGHSCORES_NORMAL, HIGHSCORES_EASY
     highscores = HIGHSCORES_NORMAL
     if mode == "easy":
         highscores = HIGHSCORES_EASY
 
-    highscores += [{"points": points, "name": name, "timestamp":  datetime.now(), "recording_filename": recording_filename}]
+    highscores += [{"points": points, "name": name, "timestamp":  datetime.now(), "recording_filename": recording_filename, "horn_catches": horn_catches, "body_catches": body_catches, "missed": missed}]
     highscores.sort(key=lambda entry: entry["points"], reverse=True)
 
     if mode == "easy":
@@ -722,7 +722,11 @@ def play_loop(serial_keys):
             mode = "normal"
             if RECORDING["settings"]["columns"] == 3:
                 mode = "easy"
-            add_highscore(points, name, mode, filename)
+            horn_catches = player.starsCatchedHorn
+            body_catches = player.starsCatchedButt
+            missed = GAME_STATE.StarsMissed
+
+            add_highscore(points, name, mode, filename, horn_catches, body_catches, missed)
             persist_all_highscores()
             re_render_background()
 
