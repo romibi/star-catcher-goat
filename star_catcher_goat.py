@@ -104,6 +104,17 @@ def persist_all_highscores():
     persist_highscores("highscores.pickle", HIGHSCORES_NORMAL)
     persist_highscores("highscores_easy.pickle", HIGHSCORES_EASY)
 
+def get_highscore_pos(points, mode):
+    highscores = HIGHSCORES_NORMAL
+    if mode == "easy":
+        highscores = HIGHSCORES_EASY
+
+    pos = 1
+    for highscore in highscores:
+        if highscore["points"] <= points:
+            return pos
+        pos += 1
+    return pos
 
 def add_highscore(points, name, mode, recording_filename):
     global HIGHSCORES_NORMAL, HIGHSCORES_EASY
@@ -714,7 +725,11 @@ def play_loop(serial_keys):
             add_highscore(points, name, mode, filename)
             persist_all_highscores()
             re_render_background()
-        if random.randint(0,10) > 7:
+
+        mode = "normal"
+        if RECORDING["settings"]["columns"] == 3:
+            mode = "easy"
+        if get_highscore_pos(points,  mode) <= 10:
           trigger_controller_sound("chest")
         else:
           trigger_controller_sound("fanfare")

@@ -187,8 +187,9 @@ class Player(pg.sprite.Sprite):
         elif star.gridPosX == self.ButtColumn:
             self.starsCatchedButt += 1
             self.BodyGlow()
-            if self.gamestate.CONTROLLER_PLAY_CATCH_SOUND:
-                self.triggerControllerSound("point")
+            # only play point on horn catching
+            # if self.gamestate.CONTROLLER_PLAY_CATCH_SOUND:
+            #     self.triggerControllerSound("point")
             return True
         return False
 
