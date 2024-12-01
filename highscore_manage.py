@@ -53,7 +53,7 @@ def print_entry(entry, pos=None, mode="normal"):
     original_name = ""
     if "original_name" in entry:
         if SHOW_ORIG_NAME:
-            original_name = f" (Eingegebener Name: {entry["original_name"]})"
+            original_name = f" (Eingegebener Name: {entry['original_name']})"
         else:
             original_name = f" (Name modifiziert)"
     if pos:
@@ -63,12 +63,12 @@ def print_entry(entry, pos=None, mode="normal"):
     catch_stats = ""
     if SHOW_STATS and "horn_catches" in entry:
         if mode=="easy":
-            catch_stats = f" (Gefangen: {entry["horn_catches"]}, Verpasst: {entry["missed"]})"
+            catch_stats = f" (Gefangen: {entry['horn_catches']}, Verpasst: {entry['missed']})"
         else:
-            catch_stats = f" (Horn: {entry["horn_catches"]}, Total {entry["horn_catches"]+entry["body_catches"]}, Verpasst: {entry["missed"]})"
+            catch_stats = f" (Horn: {entry['horn_catches']}, Total {entry['horn_catches']+entry['body_catches']}, Verpasst: {entry['missed']})"
     file = ""
     if SHOW_RECORDING_FILEPATH:
-        file = f" {entry["recording_filename"]}"
+        file = f" {entry['recording_filename']}"
     highscore_text += f"{entry['points']: >4} Punkte: {entry['name']: <10} am {entry['timestamp'].strftime('%d.%m.%Y %H:%M')}{catch_stats}{file}{original_name}"
     print(highscore_text)
 
