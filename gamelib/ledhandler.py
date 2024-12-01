@@ -87,7 +87,7 @@ class LedHandler:
 
     def __init__(self, game_config: GameConfig):
         self.game_config = game_config
-        self.active = -1 # 0: no, 1: yes, -1: active unless first request fails
+        self.active = 1 # 0: no, 1: yes, -1: active unless first request fails
         self.httpasyncclient = httpx.AsyncClient(timeout=0.9)
         self.reset()
 
