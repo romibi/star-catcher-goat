@@ -168,6 +168,10 @@ class Gamepad_Buttons():
         self.label_line_ok = LineSprite(1134, 480, [(5, 5), (50, 5)], 5, 'white', (game_ui_sprites, game_sprites))
         self.label_line_del = LineSprite(1105, 495, [(10, 5), (35, 25), (165, 25)], 5, 'white',(game_ui_sprites, game_sprites))
 
+        self.reception_icon_image = pg.Surface((56,56), pg.SRCALPHA)
+        self.reception_icon = ImageIcon(1222, 400, [self.reception_icon_image], (game_ui_sprites, game_sprites))
+        self.reception_last_value = 0
+
     def update_rects(self):
         if self.gamestate.screenMode == ScreenMode.GAME_BIG:
             self.button_left.rect.left = 810
@@ -466,37 +470,38 @@ class Gamepad_Buttons():
         game_sprites.remove(self.label_line_del)
         game_ui_sprites.remove(self.label_line_del)
 
+    def update_reception(self):
+        if self.gamestate.CONTROLLER_CONNECTION_RECEPTION == self.reception_last_value:
+            return
+
+        # https://stackoverflow.com/a/68722109
+        def mapRange(value, inMin, inMax, outMin, outMax):
+            return outMin + (((value - inMin) / (inMax - inMin)) * (outMax - outMin))
+
+        self.reception_last_value = self.gamestate.CONTROLLER_CONNECTION_RECEPTION
+
+        reception = self.gamestate.CONTROLLER_CONNECTION_RECEPTION  # seems to range  from -85 (bad) to -27 (perfect)
+        reception = mapRange(reception, -85, -27, 0, 100)
+        reception = clamp(reception, 0, 100)
+
+        color_reception_good = Color(0, 192, 0)
+        color_reception_bad = Color(192, 0, 0)
+
+        reception_color = color_reception_bad.lerp(color_reception_good, reception / 100)
+
+        reception_width = reception / 2
+
+        reception_rectangle_lower_left = (3, 53)
+        reception_rectangle_lower_right = (3 + reception_width, 53)
+        reception_rectangle_upper_right = (3 + reception_width, 53 - reception_width)
+
+        self.reception_icon_image.fill(Color(0, 0, 0, 0))
+        pg.draw.polygon(self.reception_icon_image, reception_color, (
+        reception_rectangle_lower_left, reception_rectangle_upper_right, reception_rectangle_lower_right))
+
     def update(self):
         # todo: where to call this from?
         self.frame += 1
         if self.gamestate.screenMode != self.previous_screen_mode:
             self.update_rects()
-
-
-        reception = self.gamestate.CONTROLLER_CONNECTION_RECEPTION # ranges (probably) from -100 (bad) to 0 (perfect)
-        reception = reception + 100 # → 0 bad to 100 perfect
-        reception = clamp(reception, 0, 100)
-
-        #reception = random.randint(0,100)
-
-        color_reception_good = Color(0,192,0)
-        color_reception_bad = Color(192,0,0)
-
-        reception_color = color_reception_bad.lerp(color_reception_good, reception/100)
-
-        reception_rect = Rect(1222, 400, 56, 56)
-
-        # clear area of reception triangle
-        background = pg.Surface((reception_rect.width, reception_rect.height))
-        background.fill("#515151")
-        self.gamestate.GAME_SCREEN.blit(background, (reception_rect.left, reception_rect.top))
-
-        reception_width = reception/2
-
-        reception_rectangle_lower_left = (reception_rect.left+3, reception_rect.top+53)
-        reception_rectangle_lower_right = (reception_rect.left+3+reception_width, reception_rect.top+53)
-        reception_rectangle_upper_right = (reception_rect.left+3+reception_width, reception_rect.top+53-reception_width)
-
-        pg.draw.polygon(self.gamestate.GAME_SCREEN, reception_color, (reception_rectangle_lower_left, reception_rectangle_upper_right, reception_rectangle_lower_right))
-
-        pg.display.update(reception_rect)
+        self.update_reception()
