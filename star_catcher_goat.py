@@ -338,8 +338,16 @@ def get_buttons_from_serial():
                     GAME_STATE.CONTROLLER_COLOR = "green"
                 case "b":
                     GAME_STATE.CONTROLLER_COLOR = "blue"
+        if line.startswith("RECEPTION:"):
+            receptionStr = line.replace("RECEPTION:", "")
+            reception = -999
+            try:
+                reception = int(receptionStr)
+            except ValueError:
+                pass
+            GAME_STATE.CONTROLLER_CONNECTION_RECEPTION = reception
         if line.startswith("CONNECTION:"):
-            state =  line.replace("CONNECTION:", "")
+            state = line.replace("CONNECTION:", "")
             changed = GAME_STATE.CONTROLLER_CONNECTION_STATE != state
             old_state = GAME_STATE.CONTROLLER_CONNECTION_STATE
             GAME_STATE.CONTROLLER_CONNECTION_STATE = state
@@ -527,6 +535,8 @@ def main():
                 play_loop(serial_keys)
                 GAME_STATE.MENU_JUST_CLOSED = False
 
+            GAME_STATE.GAMEPAD_BUTTONS.update()
+
             ltime = time.localtime()
             shutdowntext1 = ""
             shutdowntext2 = ""
@@ -539,7 +549,6 @@ def main():
                 shutdowntext2 = "herunter! ..."
             if (len(shutdowntext1)>0):
                 # clear area for when flashing text is not there
-                background = pg.Surface(GAME_STATE.SCREEN_RECT.size)
                 shutdowntext_area = Rect(970,305,310,90)
                 background = pg.Surface((shutdowntext_area.width, shutdowntext_area.height))
                 background.fill("#515151")

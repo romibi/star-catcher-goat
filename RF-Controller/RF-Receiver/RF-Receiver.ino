@@ -23,6 +23,7 @@
 // #define DEST_ADDRESS 2 // we answer to whoever sends
 
 // What are the buttons mapped to?
+bool USE_HID = false; // act as a keyboard when serial is off?
 #define BTN_KEY_R KEY_RETURN
 #define BTN_KEY_Y ' '
 #define BTN_KEY_START KEY_ESC
@@ -43,6 +44,7 @@
 
 #define MIN_DELAY 10
 #define CONNECTION_LOST_TIMEOUT 10000
+#define RECEPTION_PRINT_FREQUENCY 5000
 
 // Singleton instance of the radio driver
 RH_RF69 rf69(RFM69_CS, RFM69_INT);
@@ -137,7 +139,9 @@ int csb_add_index = 0;
 int csb_send_index = 0;
 
 unsigned long last_received_time = 0;
-String connection_state = "CONNECTION: UNKNOWN";
+unsigned long last_reception_print = 0;
+String connection_state = "CONNECTION:UNKNOWN";
+String reception_state = "RECEPTION:UNKNOWN";
 String last_color_state = "COLOR:g";
 String last_button_state = "BUTTONS:";
 
@@ -152,6 +156,7 @@ void loop() {
     if (command.equals("state")) {
       Serial.println(last_color_state);
       Serial.println(connection_state);
+      Serial.println(reception_state);
       Serial.println(last_button_state);
     } else if (command.equals("serial on")) {
       // deprecated command?
@@ -189,15 +194,6 @@ void loop() {
         command_send_buffer[csb_index] = command;
         csb_add_index = csb_index;
       }
-
-      /* int str_len = command.length() + 1;
-      char cmddata[str_len];
-      command.toCharArray(cmddata, str_len);
-
-      //if (!rf69_manager.sendtoWait(cmddata, sizeof(cmddata), DEST_ADDRESS)) {
-      if (!rf69_manager.sendto(cmddata, sizeof(cmddata), DEST_ADDRESS)) {
-        Serial.println("RFM69 Sending failed (no ack)");
-      } */
     }
   }
 
@@ -209,9 +205,11 @@ void loop() {
     // Wait for a message addressed to us from the client
     uint8_t len = sizeof(buf);
     uint8_t from;
-    
+        
     //if (rf69_manager.recvfromAck(buf, &len, &from)) {
     if (rf69_manager.recvfromAck(buf, &len, &from)) {      
+      int16_t rssi = rf69.lastRssi();
+
       bool print = !connection_state.equals("CONNECTION:OK");
       connection_state = "CONNECTION:OK";
       last_received_time = millis();
@@ -240,6 +238,13 @@ void loop() {
 
       // Handle received
       buf[len] = 0; // zero out remaining string
+
+      reception_state = "RECEPTION:"+String(rssi);
+      if (last_reception_print + RECEPTION_PRINT_FREQUENCY < millis()) {
+        last_reception_print = millis();
+        Serial.println(reception_state);
+      }
+
       
       String received = String((char*)buf);
       if(received.startsWith("C:")) {
@@ -264,41 +269,43 @@ void loop() {
         Serial.print("] : ");
         Serial.println((char*)buf);
 
-        curr_R = false;
-        curr_Y = false;
-        curr_START = false;
-        curr_SELECT = false;
-        curr_UP = false;
-        curr_DOWN = false;
-        curr_LEFT = false;
-        curr_RIGHT = false;
+        if(USE_HID) {
+          curr_R = false;
+          curr_Y = false;
+          curr_START = false;
+          curr_SELECT = false;
+          curr_UP = false;
+          curr_DOWN = false;
+          curr_LEFT = false;
+          curr_RIGHT = false;
 
-        for (int i=0; i < len; i++) {
-          switch(buf[i]) {
-            case 'R':
-              curr_R = true;
-              break;
-            case 'Y':
-              curr_Y = true;
-              break;
-            case 'S':
-              curr_START = true;
-              break;
-            case 's':
-              curr_SELECT = true;
-              break;
-            case 'u':
-              curr_UP = true;
-              break;
-            case 'd':
-              curr_DOWN = true;
-              break;
-            case 'l':
-              curr_LEFT = true;
-              break;
-            case 'r':
-              curr_RIGHT = true;
-              break;
+          for (int i=0; i < len; i++) {
+            switch(buf[i]) {
+              case 'R':
+                curr_R = true;
+                break;
+              case 'Y':
+                curr_Y = true;
+                break;
+              case 'S':
+                curr_START = true;
+                break;
+              case 's':
+                curr_SELECT = true;
+                break;
+              case 'u':
+                curr_UP = true;
+                break;
+              case 'd':
+                curr_DOWN = true;
+                break;
+              case 'l':
+                curr_LEFT = true;
+                break;
+              case 'r':
+                curr_RIGHT = true;
+                break;
+            }
           }
         }
       }
@@ -307,7 +314,7 @@ void loop() {
   // ###################################################################
     } else {
       bool print = !connection_state.equals("CONNECTION:UNSTABLE");
-      connection_state = "CONNECTION: UNSTABLE";
+      connection_state = "CONNECTION:UNSTABLE";
       if (print) {      
         Serial.println(connection_state);
       }
@@ -316,6 +323,7 @@ void loop() {
     if (!connection_state.equals("CONNECTION:LOST")) {
       if (last_received_time + CONNECTION_LOST_TIMEOUT < millis()) {
         connection_state = "CONNECTION:LOST";
+        reception_state = "RECEPTION:NONE";
         Serial.println(connection_state);
       }
     }
@@ -325,7 +333,7 @@ void loop() {
   // ###################################################################
   // Not Serial: Send Button Presses
   // ###################################################################
-  if(!USE_SERIAL) {
+  if(!USE_SERIAL && USE_HID) {
     // update button states
     trigger_R = (!last_R) && curr_R;
     trigger_Y = (!last_Y) && curr_Y;

@@ -1,4 +1,6 @@
-from pygame import Rect
+import pygame as pg
+from pygame import Rect, Color
+from pygame.math import clamp
 
 from config.gameconfig import ScreenMode
 from gamelib.data_helper_functions import load_image, load_font
@@ -470,11 +472,31 @@ class Gamepad_Buttons():
         if self.gamestate.screenMode != self.previous_screen_mode:
             self.update_rects()
 
-        # self.button_up.update()
-        # self.button_down.update()
-        # self.button_right.update()
-        # self.button_left.update()
-        # self.button_start.update()
-        # self.button_select.update()
-        # self.button_red.update()
-        # self.button_yellow.update()
+
+        reception = self.gamestate.CONTROLLER_CONNECTION_RECEPTION # ranges (probably) from -100 (bad) to 0 (perfect)
+        reception = reception + 100 # → 0 bad to 100 perfect
+        reception = clamp(reception, 0, 100)
+
+        #reception = random.randint(0,100)
+
+        color_reception_good = Color(0,192,0)
+        color_reception_bad = Color(192,0,0)
+
+        reception_color = color_reception_bad.lerp(color_reception_good, reception/100)
+
+        reception_rect = Rect(1222, 400, 56, 56)
+
+        # clear area of reception triangle
+        background = pg.Surface((reception_rect.width, reception_rect.height))
+        background.fill("#515151")
+        self.gamestate.GAME_SCREEN.blit(background, (reception_rect.left, reception_rect.top))
+
+        reception_width = reception/2
+
+        reception_rectangle_lower_left = (reception_rect.left+3, reception_rect.top+53)
+        reception_rectangle_lower_right = (reception_rect.left+3+reception_width, reception_rect.top+53)
+        reception_rectangle_upper_right = (reception_rect.left+3+reception_width, reception_rect.top+53-reception_width)
+
+        pg.draw.polygon(self.gamestate.GAME_SCREEN, reception_color, (reception_rectangle_lower_left, reception_rectangle_upper_right, reception_rectangle_lower_right))
+
+        pg.display.update(reception_rect)
