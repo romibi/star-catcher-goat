@@ -578,7 +578,6 @@ def main():
         pg.time.wait(1000)
 
 def render_highscores():
-    # todo: change between normal/easy highscore list on start screen after some time
     mode = "normal"
     mode_text = "Normales Spiel"
     if GAME_CONFIG.COLUMNS == 3:

@@ -17,7 +17,6 @@ class Gamepad_Buttons():
         game_sprites = self.gamestate.GAME_SPRITES
         game_ui_sprites = self.gamestate.GAME_UI_SPRITES
 
-        # todo: make gamepad sprite non transparent? or why are (old?) sprites behind gamepad visible?
         self.gamepad_sprite = ImageIcon(753,398, [load_image('gamepad.png', 'ui')], (game_ui_sprites, game_sprites))
 
         self.dpad_color = self.gamestate.CONTROLLER_COLOR

@@ -11,8 +11,6 @@ def get_random_color():
 
 def get_post(hub):
     color = get_random_color()
-    # todo use json api to use 1 request per hub
-    # return f"http://10.128.0.10{hub}/win&SM={segment}&SB=255&CL=H{color}&SV=2"
     url = f"http://10.128.0.10{hub}/json"
     data = "{'seg':["
     for segment in (0,1,2,3,4,5):
@@ -44,7 +42,6 @@ def update_leds():
                 exception_handler()
 
     for post in posts:
-        # todo: use task groups
         threading.Thread(target=do_post, args=(post,None)).start()
 
 def main():

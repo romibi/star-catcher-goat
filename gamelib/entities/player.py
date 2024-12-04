@@ -82,7 +82,6 @@ class Player(pg.sprite.Sprite):
         horn_color_hex = f'{horn_color.r:02x}{horn_color.g:02x}{horn_color.b:02x}'.upper()
 
         self.led.set_goat_led(self.viz_pos,self.led.GOAT_BRIGHTNESS, body_color_hex, horn_color_hex)
-        # todo: immediately update goat leds? or later?
         self.led.update_leds(update_stars=False, update_goats=True) # immediately update goat leds
 
 
