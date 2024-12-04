@@ -34,6 +34,17 @@ if [ "`tty`" = "/dev/tty1" ]; then
     tmux -2 attach0session -d
 fi
 ```
+- setup automatic shutoff:
+```
+sudo su
+crontab -e
+```
+and enter
+```
+0 22 * * * /bin/pkill "python"
+0 22 * * * /sbin/shutdown -P +1 It's 22:00
+```
+
 
 ### Setup Splash Screen
 - `sudo apt install rpd-plym-splash`
