@@ -448,6 +448,9 @@ def main():
     leds = LedHandler(GAME_CONFIG)
     GAME_STATE.LED_HANDLER = leds
 
+    leds.set_all_leds_off()
+    leds.update_leds()
+
     global MENU_FACTORY
     MENU_FACTORY = MenuFactory(GAME_STATE)
 
@@ -502,75 +505,76 @@ def main():
 
     GAME_STATE.CURRENT_MENU = MENU_FACTORY.StartMenu(re_render_background)
 
-    # Run our main loop whilst the player is alive.
-    while GAME_STATE.PLAYER.alive() and not GAME_STATE.GAME_QUIT:
-        # get currently pressed buttons on serial controller
-        serial_keys = get_buttons_from_serial()
-        next_key_list = serial_keys.copy() # copy for next frame
+    try:
+        # Run our main loop whilst the player is alive.
+        while GAME_STATE.PLAYER.alive() and not GAME_STATE.GAME_QUIT:
+            # get currently pressed buttons on serial controller
+            serial_keys = get_buttons_from_serial()
+            next_key_list = serial_keys.copy() # copy for next frame
 
-        # remove keys already pressed last time
-        for key in GAME_STATE.LAST_SERIAL_BUTTONS:
-            if key in serial_keys:
-                serial_keys.remove(key)
+            # remove keys already pressed last time
+            for key in GAME_STATE.LAST_SERIAL_BUTTONS:
+                if key in serial_keys:
+                    serial_keys.remove(key)
 
-        # set current list as pressed last time
-        GAME_STATE.LAST_SERIAL_BUTTONS = next_key_list
+            # set current list as pressed last time
+            GAME_STATE.LAST_SERIAL_BUTTONS = next_key_list
 
-        if GAME_STATE.CURRENT_MENU:
-            GAME_STATE.CURRENT_MENU.loop(serial_keys)
-        else:
-            play_loop(serial_keys)
-            GAME_STATE.MENU_JUST_CLOSED = False
+            if GAME_STATE.CURRENT_MENU:
+                GAME_STATE.CURRENT_MENU.loop(serial_keys)
+            else:
+                play_loop(serial_keys)
+                GAME_STATE.MENU_JUST_CLOSED = False
 
-        ltime = time.localtime()
-        shutdowntext1 = ""
-        shutdowntext2 = ""
+            ltime = time.localtime()
+            shutdowntext1 = ""
+            shutdowntext2 = ""
 
-        if (ltime.tm_hour == 21) and (ltime.tm_min >= 55):
-            shutdowntext1 = "Spiel fährt bald"
-            shutdowntext2 = "herunter! (22 Uhr)"
-        if (ltime.tm_hour == 22):
-            shutdowntext1 = "Spiel fährt jetzt"
-            shutdowntext2 = "herunter! ..."
-        if (len(shutdowntext1)>0):
-            # clear area for when flashing text is not there
-            background = pg.Surface(GAME_STATE.SCREEN_RECT.size)
-            shutdowntext_area = Rect(970,305,310,90)
-            background = pg.Surface((shutdowntext_area.width, shutdowntext_area.height))
-            background.fill("#515151")
-            GAME_STATE.GAME_SCREEN.blit(background, (shutdowntext_area.left, shutdowntext_area.top))
+            if (ltime.tm_hour == 21) and (ltime.tm_min >= 55):
+                shutdowntext1 = "Spiel fährt bald"
+                shutdowntext2 = "herunter! (22 Uhr)"
+            if (ltime.tm_hour == 22):
+                shutdowntext1 = "Spiel fährt jetzt"
+                shutdowntext2 = "herunter! ..."
+            if (len(shutdowntext1)>0):
+                # clear area for when flashing text is not there
+                background = pg.Surface(GAME_STATE.SCREEN_RECT.size)
+                shutdowntext_area = Rect(970,305,310,90)
+                background = pg.Surface((shutdowntext_area.width, shutdowntext_area.height))
+                background.fill("#515151")
+                GAME_STATE.GAME_SCREEN.blit(background, (shutdowntext_area.left, shutdowntext_area.top))
 
-            # render flashing shutdown text half the time
-            if (ltime.tm_sec%2==0):
-                shutdowntextfont = load_font(36)
-                shutdowntextimg1 = shutdowntextfont.render(shutdowntext1, 0, 'red')
-                shutdowntextimg2 = shutdowntextfont.render(shutdowntext2, 0, 'red')
-                GAME_STATE.GAME_SCREEN.blit(shutdowntextimg1, (975,310), shutdowntextimg1.get_rect())
-                GAME_STATE.GAME_SCREEN.blit(shutdowntextimg2, (975,345), shutdowntextimg2.get_rect())
+                # render flashing shutdown text half the time
+                if (ltime.tm_sec%2==0):
+                    shutdowntextfont = load_font(36)
+                    shutdowntextimg1 = shutdowntextfont.render(shutdowntext1, 0, 'red')
+                    shutdowntextimg2 = shutdowntextfont.render(shutdowntext2, 0, 'red')
+                    GAME_STATE.GAME_SCREEN.blit(shutdowntextimg1, (975,310), shutdowntextimg1.get_rect())
+                    GAME_STATE.GAME_SCREEN.blit(shutdowntextimg2, (975,345), shutdowntextimg2.get_rect())
 
-            # update Screen area where flashing text is
-            pg.display.update(shutdowntext_area)
+                # update Screen area where flashing text is
+                pg.display.update(shutdowntext_area)
 
-        # cap the framerate at 10fps. Also called 10HZ or 10 times per second.
-        clock.tick(GAME_CONFIG.FRAME_RATE)
+            # cap the framerate at 10fps. Also called 10HZ or 10 times per second.
+            clock.tick(GAME_CONFIG.FRAME_RATE)
+    finally:
+        leds.set_all_leds_off()
+        leds.update_leds()
 
-    leds.set_all_leds_off()
-    leds.update_leds()
+        if GAME_STATE.CONTROLLER_COM:
+            # todo: decide: deprecate serial off?
+            # controller seems to get buggy on serial off ...
+            # try:
+            #     GAME_STATE.CONTROLLER_COM.write(bytes(f"serial off\n", 'utf-8'))
+            #     GAME_STATE.CONTROLLER_COM.flush()
+            # except:
+            #     pass
+            GAME_STATE.CONTROLLER_COM = None
 
-    if GAME_STATE.CONTROLLER_COM:
-        # todo: decide: deprecate serial off?
-        # controller seems to get buggy on serial off ...
-        # try:
-        #     GAME_STATE.CONTROLLER_COM.write(bytes(f"serial off\n", 'utf-8'))
-        #     GAME_STATE.CONTROLLER_COM.flush()
-        # except:
-        #     pass
-        GAME_STATE.CONTROLLER_COM = None
-
-    if pg.mixer:
-        # todo: really add music and maybe some sample trigger commands to controller
-        pg.mixer.music.fadeout(1000)
-    pg.time.wait(1000)
+        if pg.mixer:
+            # todo: really add music and maybe some sample trigger commands to controller
+            pg.mixer.music.fadeout(1000)
+        pg.time.wait(1000)
 
 def render_highscores():
     # todo: change between normal/easy highscore list on start screen after some time
