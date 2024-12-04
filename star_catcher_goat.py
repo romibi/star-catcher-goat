@@ -145,6 +145,7 @@ def init_recording():
 
     difficulty = {
         "STAR_BASE_LIKELIHOOD": GAME_CONFIG.STAR_BASE_LIKELIHOOD,
+        "STAR_LIKELIHOOD_MODIFIER": GAME_CONFIG.STAR_LIKELIHOOD_MODIFIER,
         "STAR_MAX_LIKELIHOOD": GAME_CONFIG.STAR_MAX_LIKELIHOOD,
         "STAR_TIMER_LIKELIHOOD": GAME_CONFIG.STAR_TIMER_LIKELIHOOD,
         "FORCE_STAR_SPAWN_MIN": GAME_CONFIG.FORCE_STAR_SPAWN_MIN,
@@ -174,6 +175,10 @@ def apply_recording_settings():
     if "difficulty" in RECORDING:
         difficulty = RECORDING["difficulty"]
         if "STAR_BASE_LIKELIHOOD" in difficulty: GAME_CONFIG.STAR_BASE_LIKELIHOOD = difficulty["STAR_BASE_LIKELIHOOD"]
+        if "STAR_LIKELIHOOD_MODIFIER" in difficulty:
+            GAME_CONFIG.STAR_LIKELIHOOD_MODIFIER = difficulty["STAR_LIKELIHOOD_MODIFIER"]
+        else:
+            GAME_CONFIG.STAR_LIKELIHOOD_MODIFIER = 0.0 # early recordings did not use this
         if "STAR_MAX_LIKELIHOOD" in difficulty: GAME_CONFIG.STAR_MAX_LIKELIHOOD = difficulty["STAR_MAX_LIKELIHOOD"]
         if "STAR_TIMER_LIKELIHOOD" in difficulty: GAME_CONFIG.STAR_TIMER_LIKELIHOOD = difficulty["STAR_TIMER_LIKELIHOOD"]
         if "FORCE_STAR_SPAWN_MIN" in difficulty: GAME_CONFIG.FORCE_STAR_SPAWN_MIN = difficulty["FORCE_STAR_SPAWN_MIN"]
@@ -273,6 +278,7 @@ def spawn_new_star_row(stars, star_groups):
 
     for starNr in range(GAME_CONFIG.MAX_STARS):
         random_draw = random.random()
+        star_likelihood = star_likelihood / (1 + (starNr*GAME_CONFIG.STAR_LIKELIHOOD_MODIFIER))
         spawn_star = random_draw < star_likelihood
 
         if star_count <= GAME_CONFIG.FORCE_STAR_SPAWN_MIN:

@@ -9,6 +9,7 @@ class ScreenMode(Enum):
 
 class GameConfig:
     STAR_BASE_LIKELIHOOD: float  # Likelihood of first star per spawn block (0.3 = 30%, 2nd star half of it)
+    STAR_LIKELIHOOD_MODIFIER: float # likelihood (l) modifier (m) for additional spawns (nr=0,1,2,…): l=l/(1+(nr*m)) => 0=disabled
     STAR_MAX_LIKELIHOOD: float  # Max likelihood for first star per spawn block (2nd star half of it)
     STAR_TIMER_LIKELIHOOD: float  # star spawn likelihood increase over time
     FORCE_STAR_SPAWN_MIN: int  # if less stars than this are visible, first star spawns 100%
@@ -36,6 +37,7 @@ class GameConfig:
     def reset(self):
         # difficulty settings
         self.STAR_BASE_LIKELIHOOD = 0.3
+        self.STAR_LIKELIHOOD_MODIFIER = 1.0 # 0.0 = no modifier, 1.0 = second star in batch is halved: l=l/(1+(nr*m))
         self.STAR_MAX_LIKELIHOOD = 0.95
         self.STAR_TIMER_LIKELIHOOD = 0.0005
         self.FORCE_STAR_SPAWN_MIN = 2
