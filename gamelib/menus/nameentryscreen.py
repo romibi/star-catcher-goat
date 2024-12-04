@@ -282,6 +282,13 @@ class NameEntryScreen(MenuScreen):
 
 
     def confirm(self):
+        if self.name == "ROMIBI":
+            self.name = "romibi"
+            self.update_name_sprite()
+            self.sprites.clear(self.gamestate.GAME_SCREEN, self.background)
+            self.sprites.update()
+            dirty = self.sprites.draw(self.gamestate.GAME_SCREEN)
+            pg.display.update(dirty)
         self.mios_eastereg()
         self.gamestate.PLAYER_NAME = self.name.strip() # don't allow spaces at end
         if callable(self.confirm_callback):
