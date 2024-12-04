@@ -448,6 +448,7 @@ def main():
     leds = LedHandler(GAME_CONFIG)
     GAME_STATE.LED_HANDLER = leds
 
+    GAME_STATE.reset(6) # reset gamestate before initial led shutoff to have correct led mapping
     leds.set_all_leds_off()
     leds.update_leds()
 
