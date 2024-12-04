@@ -223,6 +223,9 @@ class Gamepad_Buttons():
         game_sprites = self.gamestate.GAME_SPRITES
         game_ui_sprites = self.gamestate.GAME_UI_SPRITES
 
+        game_sprites.remove(self.reception_icon)
+        game_ui_sprites.remove(self.reception_icon)
+
         game_sprites.add(self.gamepad_sprite)
         game_sprites.add(self.button_up)
         game_sprites.add(self.button_select)
@@ -244,6 +247,9 @@ class Gamepad_Buttons():
         game_ui_sprites.add(self.button_yellow)
 
         self.show_labels(self.show_labels_mode)
+
+        game_sprites.add(self.reception_icon)
+        game_ui_sprites.add(self.reception_icon)
 
     def set_button_paused_state(self, mode):
         self.button_up.paused = True

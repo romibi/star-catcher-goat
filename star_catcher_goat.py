@@ -529,13 +529,13 @@ def main():
             # set current list as pressed last time
             GAME_STATE.LAST_SERIAL_BUTTONS = next_key_list
 
+            GAME_STATE.GAMEPAD_BUTTONS.update()
+
             if GAME_STATE.CURRENT_MENU:
                 GAME_STATE.CURRENT_MENU.loop(serial_keys)
             else:
                 play_loop(serial_keys)
                 GAME_STATE.MENU_JUST_CLOSED = False
-
-            GAME_STATE.GAMEPAD_BUTTONS.update()
 
             ltime = time.localtime()
             shutdowntext1 = ""
