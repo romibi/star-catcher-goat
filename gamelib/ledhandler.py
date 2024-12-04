@@ -1,3 +1,5 @@
+import threading
+
 from pygame import Color
 import httpx
 from httpx import Timeout
@@ -346,11 +348,11 @@ class LedHandler:
         async def do_single_post_async(post, exception_handler):
             try:
                 #print(f"posting to {post[0]}: {post[1]}")
-                resp = await self.httpasyncclient.post(post[0], data=post[1])
+                resp = await self.httpasyncclient.post(post[0], data=post[1], timeout=0.9)
                 #print(resp)
                 # resp.close()
             except Exception as e:
-                #print(e)
+                # print(e)
                 if exception_handler:
                     exception_handler(post, e)
 
@@ -369,4 +371,7 @@ class LedHandler:
             self.active = 1
             active_exception_handler = disable_on_exception_handler
 
-        asyncio.run(do_multiple_posts_async(posts,active_exception_handler))
+        def run():
+            asyncio.run(do_multiple_posts_async(posts,active_exception_handler))
+
+        threading.Thread(target=run).start()
