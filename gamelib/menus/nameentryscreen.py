@@ -183,12 +183,17 @@ class NameEntryScreen(MenuScreen):
         name = self.name.strip()
         if name == 'MIO':
             return True
+        if name == 'romibi': # ROMIBI gets turned into lowercase beforehand
+            return True
         if name == 'ELIO':
-            if is_name_in_highscores(name):
-                return True
+            #if not is_name_in_highscores(name):
+            #    return True
             return random.randint(1,100) < 80
-        if name[-1] == 'O':
+        if name == 'HANNA':
+            return random.randint(1,100) < 75
+        if name[-1] == 'O': # does name end in an "O"
             return random.randint(1, 100) < 60
+        # All other cases:
         return random.randint(1, 100) < 5
 
 
