@@ -357,7 +357,13 @@ def get_buttons_from_serial():
                 if state == "OK":
                     if old_state == "LOST":
                         result += [SERIAL_CONTROLLER_CN]
-
+        if line.startswith("VBAT:"):
+            vbatstr = line.replace("VBAT:", "").strip()
+            try:
+                vbat = float(vbatstr)
+                GAME_STATE.CONTROLLER_VBAT = vbat
+            except ValueError:
+                pass
         if line == "":
             break
 

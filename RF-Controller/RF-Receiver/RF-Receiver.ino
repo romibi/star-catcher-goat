@@ -143,6 +143,7 @@ unsigned long last_reception_print = 0;
 String connection_state = "CONNECTION:UNKNOWN";
 String reception_state = "RECEPTION:UNKNOWN";
 String last_color_state = "COLOR:g";
+String last_vbat = "VBAT:UNKNOWN";
 String last_button_state = "BUTTONS:";
 
 void loop() {
@@ -157,6 +158,7 @@ void loop() {
       Serial.println(last_color_state);
       Serial.println(connection_state);
       Serial.println(reception_state);
+      Serial.println(last_vbat);
       Serial.println(last_button_state);
     } else if (command.equals("serial on")) {
       // deprecated command?
@@ -251,6 +253,9 @@ void loop() {
         String serial_out = "COLOR:"+received.substring(2);
         Serial.println(serial_out);
         last_color_state = serial_out;
+      } else if(received.startsWith("VBAT:")) {
+        last_vbat = received;
+        Serial.println(received);
       } else if(USE_SERIAL) {
   // ###################################################################
   // USE_SERIAL: print received data to serial

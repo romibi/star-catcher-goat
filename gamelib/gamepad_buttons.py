@@ -172,6 +172,10 @@ class Gamepad_Buttons():
         self.reception_icon = ImageIcon(1222, 400, [self.reception_icon_image], (game_ui_sprites, game_sprites))
         self.reception_last_value = 0
 
+        self.battery_icon_image = load_image("bat.png", "ui")
+        self.battery_icon = ImageIcon(1236, 400, [self.battery_icon_image]) # no groups, don't show by default
+        self.battery_last_value = None
+
     def update_rects(self):
         if self.gamestate.screenMode == ScreenMode.GAME_BIG:
             self.button_left.rect.left = 810
@@ -226,6 +230,9 @@ class Gamepad_Buttons():
         game_sprites.remove(self.reception_icon)
         game_ui_sprites.remove(self.reception_icon)
 
+        game_sprites.remove(self.battery_icon)
+        game_ui_sprites.remove(self.battery_icon)
+
         game_sprites.add(self.gamepad_sprite)
         game_sprites.add(self.button_up)
         game_sprites.add(self.button_select)
@@ -250,6 +257,10 @@ class Gamepad_Buttons():
 
         game_sprites.add(self.reception_icon)
         game_ui_sprites.add(self.reception_icon)
+
+        if self.should_show_bat():
+            game_sprites.add(self.battery_icon)
+            game_ui_sprites.add(self.battery_icon)
 
     def set_button_paused_state(self, mode):
         self.button_up.paused = True
@@ -476,18 +487,18 @@ class Gamepad_Buttons():
         game_sprites.remove(self.label_line_del)
         game_ui_sprites.remove(self.label_line_del)
 
+    # https://stackoverflow.com/a/68722109
+    def mapRange(self, value, inMin, inMax, outMin, outMax):
+        return outMin + (((value - inMin) / (inMax - inMin)) * (outMax - outMin))
+
     def update_reception(self):
         if self.gamestate.CONTROLLER_CONNECTION_RECEPTION == self.reception_last_value:
             return
 
-        # https://stackoverflow.com/a/68722109
-        def mapRange(value, inMin, inMax, outMin, outMax):
-            return outMin + (((value - inMin) / (inMax - inMin)) * (outMax - outMin))
-
         self.reception_last_value = self.gamestate.CONTROLLER_CONNECTION_RECEPTION
 
         reception = self.gamestate.CONTROLLER_CONNECTION_RECEPTION  # seems to range  from -85 (bad) to -27 (perfect)
-        reception = mapRange(reception, -85, -27, 0, 100)
+        reception = self.mapRange(reception, -85, -27, 0, 100)
         reception = clamp(reception, 0, 100)
 
         color_reception_good = Color(0, 192, 0)
@@ -495,7 +506,7 @@ class Gamepad_Buttons():
 
         reception_color = color_reception_bad.lerp(color_reception_good, reception / 100)
 
-        reception_width = reception / 2
+        reception_width = self.mapRange(reception, 0, 100, 2, 50)
 
         reception_rectangle_lower_left = (3, 53)
         reception_rectangle_lower_right = (3 + reception_width, 53)
@@ -505,9 +516,84 @@ class Gamepad_Buttons():
         pg.draw.polygon(self.reception_icon_image, reception_color, (
         reception_rectangle_lower_left, reception_rectangle_upper_right, reception_rectangle_lower_right))
 
+    def should_show_bat(self):
+        return self.gamestate.CONTROLLER_VBAT is not None
+
+    def update_bat(self):
+        if self.gamestate.CONTROLLER_VBAT == self.battery_last_value:
+            return
+
+        if self.battery_last_value is None:
+            self.reception_icon.rect.left -= 45
+            self.gamestate.GAME_SPRITES.add(self.battery_icon)
+            self.gamestate.GAME_UI_SPRITES.add(self.battery_icon)
+
+        vbat = self.gamestate.CONTROLLER_VBAT #
+        self.battery_last_value = vbat
+        '''
+        https://learn.adafruit.com/adafruit-feather-32u4-radio-with-rfm69hcw-module?view=all#measuring-battery-3122383 :
+        > LiPoly batteries are 'maxed out' at 4.2V and stick around 3.7V for much of the battery life,
+        > then slowly sink down to 3.2V or so before the protection circuitry cuts it off.
+        See also graphs online. I bought 1C rated Lithium battery:
+        https://www.dnkpower.com/wp-content/uploads/2019/01/discharging-curve-lipo-battery.png
+        100% - 15% ≈ 4.0V - 3.45
+        15% - 0% ≈ 3.45 - 3.2
+        '''
+        if vbat > 3.45:
+            vbat_percent = self.mapRange(vbat, 3.45, 4.0, 15, 100)
+        else:
+            vbat_percent = self.mapRange(vbat, 3.2, 3.45, 0, 15)
+
+        # todo: check if true
+        charging = vbat_percent>130 # >4.2V
+
+        vbat_percent = clamp(vbat_percent, 0, 100)
+
+        color_bat_good = Color(0, 192, 0)
+        color_bat_bad = Color(192, 0, 0)
+
+        bat_color = color_bat_bad.lerp(color_bat_good, vbat_percent / 100)
+        transparent_color = Color(0,0,0,0)
+
+        bat_fill_height = self.mapRange(vbat_percent, 0, 100, 1, 37)
+        bat_top = 12
+        bat_left = 7
+        bat_inner_height = 37
+        bat_inner_width = 28
+        bat_fill_top = bat_top + bat_inner_height - int(bat_fill_height)
+
+        self.battery_icon_image.fill(transparent_color, Rect(bat_left, bat_top, bat_inner_width, bat_inner_height))
+        self.battery_icon_image.fill(bat_color, Rect(bat_left, bat_fill_top, bat_inner_width, bat_fill_height))
+
+        # top corners
+        bat_right = bat_left+bat_inner_width
+        bat_bottom = bat_top+bat_inner_height
+        if bat_fill_top == bat_top:
+            self.battery_icon_image.set_at((bat_left,bat_top), transparent_color)
+            self.battery_icon_image.set_at((bat_left+1,bat_top), transparent_color)
+            self.battery_icon_image.set_at((bat_right-1,bat_top), transparent_color)
+            self.battery_icon_image.set_at((bat_right-2,bat_top), transparent_color)
+        if bat_fill_top <= bat_top+1:
+            self.battery_icon_image.set_at((bat_left,bat_top+1), transparent_color)
+            self.battery_icon_image.set_at((bat_right-1,bat_top+1), transparent_color)
+
+        # lower left corner
+        self.battery_icon_image.set_at((bat_left, bat_bottom-1), transparent_color)
+        self.battery_icon_image.set_at((bat_left+1, bat_bottom-1), transparent_color)
+        self.battery_icon_image.set_at((bat_left, bat_bottom-2), transparent_color)
+
+        # lower right corner
+        self.battery_icon_image.set_at((bat_right-1, bat_bottom-1), transparent_color)
+        self.battery_icon_image.set_at((bat_right-2, bat_bottom-1), transparent_color)
+        self.battery_icon_image.set_at((bat_right-1, bat_bottom-2), transparent_color)
+
+        if charging:
+            pg.draw.polygon(self.battery_icon_image, transparent_color, ((21,32), (12,32), (21,16), (21,45), (30,28), (21,28)))
+
     def update(self):
         # todo: where to call this from?
         self.frame += 1
         if self.gamestate.screenMode != self.previous_screen_mode:
             self.update_rects()
         self.update_reception()
+        self.update_bat()
