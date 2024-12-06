@@ -591,6 +591,7 @@ def main():
             # todo: really add music and maybe some sample trigger commands to controller
             pg.mixer.music.fadeout(1000)
         pg.time.wait(1000)
+        print_credits()
 
 def render_highscores():
     mode = "normal"
@@ -803,6 +804,17 @@ def play_loop(serial_keys):
 
     leds.update_leds()
 
+def print_credits():
+    try:
+        filename = os.path.join(main_dir, 'credits.txt')
+        if not os.path.exists(filename):
+            return
+        with open(filename, 'r') as f:
+            file_contents = f.read()
+            print(file_contents)
+            f.close()
+    except:
+        pass
 
 # call the "main" function if running this script
 if __name__ == "__main__":
