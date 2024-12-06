@@ -2,6 +2,7 @@
 
 import os
 import random
+import signal
 import time
 import subprocess
 import pickle
@@ -408,6 +409,8 @@ def main():
         print("Warning, no sound")
         pg.mixer = None
 
+    signal.signal(signal.SIGHUP, reload_highscores_and_rerender_background)
+
     # Set the display mode
     best_depth = pg.display.mode_ok(GAME_STATE.SCREEN_RECT.size, 0, 32)
     screen = pg.display.set_mode(GAME_STATE.SCREEN_RECT.size, 0, best_depth)
@@ -519,6 +522,9 @@ def main():
     GAME_STATE.reset(6)
 
     GAME_STATE.CURRENT_MENU = MENU_FACTORY.StartMenu(re_render_background)
+    #GAME_STATE.PLAYER.starsCatchedHorn = 50
+    #GAME_STATE.PLAYER.starsCatchedButt = 50
+    #GAME_STATE.CURRENT_MENU = MENU_FACTORY.NameEntry(None, re_render_background)
 
     try:
         # Run our main loop whilst the player is alive.
@@ -647,7 +653,9 @@ def re_render_background():
 
     render_highscores()
 
-
+def reload_highscores_and_rerender_background(sig, frame):
+    load_all_highscores()
+    re_render_background()
 
 def play_loop(serial_keys):
     # load some Game state objects to local vars
