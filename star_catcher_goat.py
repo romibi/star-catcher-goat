@@ -557,7 +557,7 @@ def main():
                 # clear area for when flashing text is not there
                 shutdowntext_area = Rect(970,305,310,90)
                 background = pg.Surface((shutdowntext_area.width, shutdowntext_area.height))
-                background.fill("#515151")
+                background.fill("#2c4d57")
                 GAME_STATE.GAME_SCREEN.blit(background, (shutdowntext_area.left, shutdowntext_area.top))
 
                 # render flashing shutdown text half the time
