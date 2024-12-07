@@ -618,24 +618,24 @@ def render_highscores():
     highscores = HIGHSCORES_NORMAL
     if mode == "easy":
         highscores = HIGHSCORES_EASY
-    if highscores:
-        for place in range(10):
-            y += 24
-            if len(highscores)>place:
-                entry = highscores[place]
-                name = entry['name']
-                if name == '':
-                    name = 'Unbekannt'
-                highscoretext = f"{place+1: >2}. {entry['points']: >4} Punkte: {name: <10} am {entry['timestamp'].strftime('%d.%m.%Y %H:%M')}"
-            else:
-                highscoretext = f"{place+1: >2}.    0 Punkte: .........."
 
-            text = font_mono.render(highscoretext, True, Color(255, 255, 255))
-            textRect = text.get_rect()
-            textRect.left = 25
-            textRect.top = y
+    for place in range(10):
+        y += 24
+        if len(highscores)>place:
+            entry = highscores[place]
+            name = entry['name']
+            if name == '':
+                name = 'Unbekannt'
+            highscoretext = f"{place+1: >2}. {entry['points']: >4} Punkte: {name: <10} am {entry['timestamp'].strftime('%d.%m.%Y %H:%M')}"
+        else:
+            highscoretext = f"{place+1: >2}.    0 Punkte: .........."
 
-            GAME_STATE.GAME_SCREEN.blit(text, textRect)
+        text = font_mono.render(highscoretext, True, Color(255, 255, 255))
+        textRect = text.get_rect()
+        textRect.left = 25
+        textRect.top = y
+
+        GAME_STATE.GAME_SCREEN.blit(text, textRect)
 
 def re_render_background():
     mode = "normal"
