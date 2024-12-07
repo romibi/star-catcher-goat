@@ -8,6 +8,7 @@ import subprocess
 import pickle
 from datetime import datetime
 from fileinput import filename
+import platform
 
 import serial
 import serial.tools.list_ports
@@ -409,7 +410,8 @@ def main():
         print("Warning, no sound")
         pg.mixer = None
 
-    signal.signal(signal.SIGHUP, reload_highscores_and_rerender_background)
+    if platform.system() == 'Linux':
+        signal.signal(signal.SIGHUP, reload_highscores_and_rerender_background)
 
     # Set the display mode
     best_depth = pg.display.mode_ok(GAME_STATE.SCREEN_RECT.size, 0, 32)
