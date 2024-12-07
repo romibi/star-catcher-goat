@@ -183,7 +183,7 @@ class NameEntryScreen(MenuScreen):
         name = self.name.strip()
         if len(name)==0:
             return False
-        if name == 'MIO':
+        if name == 'MIO' or name == 'MEYOU':
             return True
         if name == 'romibi': # ROMIBI gets turned into lowercase beforehand
             return True
