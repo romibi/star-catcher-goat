@@ -20,6 +20,8 @@ class UiText(pg.sprite.Sprite):
         self.targetRect = Rect(0,0,0,0)
         self.align = -1 # -1 left, 0 center, 1 right
         self.crop = False
+        self.bg_color = None
+        self.y_offset = 0
         self.update()
         self.image = self.font.render(self.text, 0, self.color)
         self.rect = self.image.get_rect().move(10, 450)
@@ -34,6 +36,12 @@ class UiText(pg.sprite.Sprite):
             self.lastText = self.text
             self.lastTargetRect = self.targetRect
             img = self.font.render(self.text, 0, self.color)
+            if self.bg_color or self.y_offset:
+                imgbg = pg.Surface(img.get_size())
+                if self.bg_color:
+                    imgbg.fill(self.bg_color)
+                imgbg.blit(img, (0,self.y_offset))
+                img = imgbg
             self.image = img
 
             self.rect = self.targetRect.copy()

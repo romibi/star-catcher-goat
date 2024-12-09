@@ -57,14 +57,27 @@ class NameEntryScreen(MenuScreen):
         alphabet_btns.font = load_font(40, "PixelOperator-Bold.ttf")
         alphabet_btns.targetRect = Rect(630, 345, 50, 64)
 
+
+        self.selector_letter_font_big = load_font(128, "PixelOperator-Bold.ttf")
+        self.selector_letter_font_small = load_font(80, "PixelOperator-Bold.ttf")
+
+        self.selector_letter = UiText(self.sprites)
+        self.selector_letter.text = "A"
+        self.selector_letter.font = self.selector_letter_font_big
+        self.selector_letter.targetRect = Rect(32, 198, 68, 90)
+        self.selector_letter.align = 0
+        self.selector_letter.y_offset = -23
+        self.selector_letter.bg_color = "#121f24"
+        self.selector_letter.crop = True
+
         self.selector_x = 0
         self.selector_y = 0
         self.selector_images_letters = [load_image(im, "ui") for im in ("selector0.png", "selector1.png")]
         self.selector_images_delete = [load_image(im, "ui") for im in ("selector_löschen0.png", "selector_löschen1.png")]
         self.selector_images_ok = [load_image(im, "ui") for im in ("selector_ok0.png", "selector_ok1.png")]
-        self.selector = ImageIcon(49, 221, self.selector_images_letters, self.sprites )
+        self.selector = ImageIcon(32, 198, self.selector_images_letters, self.sprites )
 
-        self.text_cursor = ImageIcon(49, 143, [load_image("selector1.png", "ui")], self.sprites)
+        self.text_cursor = ImageIcon(49, 143, [load_image("cursor1.png", "ui")], self.sprites)
 
         self.name_sprite = UiText(self.sprites)
         self.name_sprite.text = ""
@@ -77,6 +90,37 @@ class NameEntryScreen(MenuScreen):
 
         self.cursor.text = "" # no cursor
 
+    def get_selected_text(self):
+        if (self.selector_y == 2) and (self.selector_x == 9):
+            return "Löschen"
+        if (self.selector_y == 2) and (self.selector_x == 12):
+            return "OK"
+
+        if self.selector_y == 0:
+            return chr(65 + self.selector_x)
+        elif self.selector_y == 1:
+            return chr(78 + self.selector_x)
+        else:
+            if self.selector_x == 0:
+                return "Ä"
+            elif self.selector_x == 1:
+                return "Ö"
+            elif self.selector_x == 2:
+                return "Ü"
+            elif self.selector_x == 3:
+                return "À"
+            elif self.selector_x == 4:
+                return "É"
+            elif self.selector_x == 5:
+                return "È"
+            elif self.selector_x == 6:
+                return "."
+            elif self.selector_x == 7:
+                return "-"
+            elif self.selector_x == 8:
+                return " "
+
+
     def select_letter(self):
         if (self.selector_y == 2) and (self.selector_x == 9):
             self.remove_letter()
@@ -87,31 +131,7 @@ class NameEntryScreen(MenuScreen):
         if len(self.name) >= self.MAX_NAME_LENGTH:
             return False
 
-        new_char = ""
-        if self.selector_y == 0:
-            new_char = chr(65 + self.selector_x)
-        elif self.selector_y == 1:
-            new_char = chr(78 + self.selector_x)
-        else:
-            if self.selector_x == 0:
-                new_char = "Ä"
-            elif self.selector_x == 1:
-                new_char = "Ö"
-            elif self.selector_x == 2:
-                new_char  = "Ü"
-            elif self.selector_x == 3:
-                new_char = "À"
-            elif self.selector_x == 4:
-                new_char = "É"
-            elif self.selector_x == 5:
-                new_char = "È"
-            elif self.selector_x == 6:
-                new_char = "."
-            elif self.selector_x == 7:
-                new_char = "-"
-            elif self.selector_x == 8:
-                new_char = " "
-
+        new_char = self.get_selected_text()
         self.name = (self.name+new_char).lstrip() # don't allow space at start
         self.update_name_sprite()
         return False
@@ -154,20 +174,43 @@ class NameEntryScreen(MenuScreen):
                 self.selector.images = self.selector_images_ok
 
         # Update selector sprite coordinates (special cases for left coordinate of some letters/buttons)
+        self.selector_letter.targetRect.width = 68
+        self.selector_letter.targetRect.height = 90
         if (self.selector_y == 2) and (self.selector_x >= 9):
             # delete and ok
             if self.selector_x == 9: # delete button selector left coord
-                self.selector.rect.left = 628
+                self.selector.rect.left = 556
+                self.selector_letter.targetRect.width = 286
             if self.selector_x == 12: # ok button selector left coord
-                self.selector.rect.left = 808
+                self.selector.rect.left = 786
+                self.selector_letter.targetRect.width = 86
         elif (self.selector_y == 0) and (self.selector_x == 12):
             # "M" selector left coordinate (it's awfully wide)
-            self.selector.rect.left = 49 + self.selector_x * 64 - 2
+            self.selector.rect.left = 32 + self.selector_x * 64 - 2
         else:
             # left coord for all other letters
-            self.selector.rect.left = 49 + self.selector_x * 64
+            self.selector.rect.left = 32 + self.selector_x * 64
         # top coordinate calculation is the same for all
-        self.selector.rect.top = 221 + self.selector_y * 60
+        self.selector.rect.top = 198 + self.selector_y * 60
+
+        # Some adaptions for selector letter text
+        self.selector_letter.text = self.get_selected_text()
+        if len(self.selector_letter.text) == 1:
+            self.selector_letter.y_offset = -23
+            self.selector_letter.font = self.selector_letter_font_big
+        else:
+            self.selector_letter.y_offset = 0
+            self.selector_letter.font = self.selector_letter_font_small
+        self.selector_letter.targetRect.x = self.selector.rect.x
+        self.selector_letter.targetRect.y = self.selector.rect.y
+
+        if self.selector_letter.text in ('Ä','Ö', 'Ü'):
+            self.selector_letter.y_offset = -15
+        if self.selector_letter.text in ('À','É', 'È'):
+            self.selector_letter.y_offset = -11
+        if self.selector_letter.text in ("Löschen", "OK"):
+            self.selector_letter.targetRect.y -= 8
+            self.selector.rect.y -= 8
 
     def do_trigger_mios_eastereg(self):
         def is_name_in_highscores(name):
