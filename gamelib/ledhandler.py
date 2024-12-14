@@ -20,7 +20,7 @@ class LedHandler:
     GOAT_HORN_COLOR = 'FF9000'
 
     BRIGHTNESS_MOD = 0 # modifying 0=ALL, 1=A, 2=B, 3=G
-    STAR_BRIGHTNESS_A = 255 # row 0-2
+    STAR_BRIGHTNESS_A = 10 # row 0-2
     STAR_BRIGHTNESS_B = 255 # row 3-5
     GOAT_BRIGHTNESS = 255
 
