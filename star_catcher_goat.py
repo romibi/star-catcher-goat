@@ -817,7 +817,8 @@ def play_loop(serial_keys):
 
     spawn_new_star_row(stars, (stars, game_sprites))
 
-    leds.update_leds()
+    force_update_goats = GAME_STATE.FRAME_COUNT % 20 == 0
+    leds.update_leds(force_update_goats=force_update_goats) # goats for some reason tend to get stuck on/off
 
 def print_credits():
     try:

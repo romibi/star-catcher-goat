@@ -227,7 +227,7 @@ class LedHandler:
                 goat['bright'] = new_brightness_g
 
 
-    def collect_star_update_calls(self):
+    def collect_star_update_calls(self, force_update=False):
         posts = []
         for hub, addr in self.hubs.items():
             url = self.get_led_api_url(addr)
@@ -247,7 +247,7 @@ class LedHandler:
                     star_color = star.get('color', self.STAR_COLOR)
                     led_color = led.get('color', None)
 
-                    if (star_brightness == led_brightness) and (star_color == led_color):
+                    if (not force_update) and (star_brightness == led_brightness) and (star_color == led_color):
                         continue
 
                     self.leds[row][column]['bright'] = star_brightness
@@ -270,7 +270,7 @@ class LedHandler:
                 posts += [(url,data)]
         return posts
 
-    def collect_goat_update_calls(self):
+    def collect_goat_update_calls(self, force_update=False):
         posts = []
         for hub, hubaddr in self.goat_hubs.items():
             url = self.get_led_api_url(hubaddr)
@@ -292,7 +292,7 @@ class LedHandler:
                 goat_horn_color = goat.get('horn_color', self.GOAT_HORN_COLOR)
                 led_horn_color = led.get('horn_color', None)
 
-                if (goat_brightness == led_brightness) and (goat_horn_color == led_horn_color) and (
+                if (not force_update) and (goat_brightness == led_brightness) and (goat_horn_color == led_horn_color) and (
                         goat_body_color == led_body_color):
                     continue
 
@@ -332,17 +332,17 @@ class LedHandler:
         return posts
 
 
-    def update_leds(self, update_stars=True, update_goats=True):
+    def update_leds(self, update_stars=True, update_goats=True, force_update_stars=False, force_update_goats=False):
         if self.active == 0:
             return
 
         posts = []
 
         if update_stars:
-            posts += self.collect_star_update_calls()
+            posts += self.collect_star_update_calls(force_update_stars)
 
         if update_goats:
-            posts += self.collect_goat_update_calls()
+            posts += self.collect_goat_update_calls(force_update_goats)
 
 
         async def do_single_post_async(post, exception_handler):
