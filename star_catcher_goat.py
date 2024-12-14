@@ -327,7 +327,12 @@ def get_buttons_from_serial():
         data =  GAME_STATE.CONTROLLER_COM.read(bytes_to_read)
     except:
         return result
-    lines = data.decode("utf-8").splitlines()
+
+    try:
+        lines = data.decode("utf-8").splitlines()
+    except:
+        print(f"Unable to parse lines of {data}")
+        return result
 
     for line in lines:
         print(f"Serial: {line}")
