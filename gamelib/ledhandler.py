@@ -303,27 +303,27 @@ class LedHandler:
                 update_body = (goat_brightness != led_brightness) or (goat_body_color != led_body_color)
                 update_horn = (goat_brightness != led_brightness) or (goat_horn_color != led_horn_color)
 
-                if update_body:
+                if force_update or update_body:
                     for segment in self.goatSegmentMap[pos]["body_segments"]:
                         if data != "":
                             data += ","
                         data += f"{{'id':{segment}"
 
-                        if goat_brightness != led_brightness:
+                        if force_update or (goat_brightness != led_brightness):
                             data += f",'bri':{goat_brightness}"
-                        if goat_body_color != led_body_color:
+                        if force_update or (goat_body_color != led_body_color):
                             data += f",'col':['{goat_body_color}']"
                         data += "}"
 
-                if update_horn:
+                if force_update or update_horn:
                     for segment in self.goatSegmentMap[pos]["horn_segments"]:
                         if data != "":
                             data += ","
                         data += f"{{'id':{segment}"
 
-                        if goat_brightness != led_brightness:
+                        if force_update or (goat_brightness != led_brightness):
                             data += f",'bri':{goat_brightness}"
-                        if goat_horn_color != led_horn_color:
+                        if force_update or (goat_horn_color != led_horn_color):
                             data += f",'col':['{goat_horn_color}']"
                         data += "}"
             if data != "":
