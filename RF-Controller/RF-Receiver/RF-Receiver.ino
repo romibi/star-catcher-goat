@@ -18,6 +18,8 @@
 
 // Who am i? (client address)
 #define MY_ADDRESS   1
+// #define MY_ADDRESS   99
+// #define PROMISCUOUS
 
 // Where to send packets to!
 // #define DEST_ADDRESS 2 // we answer to whoever sends
@@ -104,6 +106,10 @@ void setup() {
   delay(10);
   digitalWrite(RFM69_RST, LOW);
   delay(10);
+
+  #ifdef PROMISCUOUS
+    rf69.setPromiscuous(true);
+  #endif
 
   if (!rf69_manager.init()) {
     Serial.println("RFM69 radio init failed");
