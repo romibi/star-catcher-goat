@@ -23,9 +23,10 @@ String CONTROLLER_COLOR = "g";
 #define RFM69_CS    8
 #define RFM69_INT   7
 #define RFM69_RST   4
+#define VBATPIN A9
 //#define LED        13 // use LED_BUILTIN instead
 
-#define BTN_R 9
+#define BTN_R 6
 #define BTN_Y 10
 #define BTN_START 11
 #define BTN_SELECT 12
@@ -41,13 +42,15 @@ String CONTROLLER_COLOR = "g";
 // ===============
 #define MIN_DELAY 10 // delay end of loop (normal mode)
 // todo implement deep sleep with interrupt
-#define SHALLOW_SLEEP_TIME 10000 //300000 // 5 min until loop slows down
+#define SHALLOW_SLEEP_TIME 300000 // 5 min until loop slows down
 #define SHALLOW_SLEEP_DELAY 1000 // delay end of loop (shallow sleep mode)
 // -> in this state you need to press a button up to 1s to back to normal speed
 
 #define SEND_REPEAT_FAST_COUNT 4 // after a change of pressed buttons: how many times to send state
 #define SEND_REPEAT_SLOW_DELAY 100 // after fast re-sends, how often to re-send same state
 #define SEND_REPEAT_SLOW_EMPTY_DELAY 1000 // after fast re-sends, if no buttons are pressed, how often to re-sed same state
+
+#define SEND_VBAT_DELAY 15000 // send battery level every 15s
 
 // ================
 // Constants Melody
@@ -330,6 +333,7 @@ char last_sent_state[20] = "";
 int last_sent_count = 0;
 unsigned long last_sent_count_reset_time = 0;
 unsigned long last_sent_time = 0;
+unsigned long last_sent_vbat = 0;
 
 int enter_charging_mode = 0;
 
@@ -448,6 +452,9 @@ void loop() {
     } else {
       doSend = last_sent_time + SEND_REPEAT_SLOW_DELAY < millis();
     }
+  } 
+  else if (last_sent_vbat==0) {
+    doSend = false;
   }
 
   // Check if we need to resend
@@ -464,6 +471,22 @@ void loop() {
     last_sent_time = millis();
     strcpy(last_sent_state, radiopacket);    
     last_sent_count += 1;
+  }
+  else if(last_sent_vbat + SEND_VBAT_DELAY < millis()) {
+    last_sent_vbat = millis();
+    float measuredvbat = analogRead(VBATPIN);
+    measuredvbat *= 2;    // we divided by 2, so multiply back
+    measuredvbat *= 3.3;  // Multiply by 3.3V, our reference voltage
+    measuredvbat /= 1024; // convert to voltage
+    Serial.print("Sending VBat: " ); Serial.println(measuredvbat);
+
+    String message = "VBAT:"+String(measuredvbat);
+
+    message.toCharArray(radiopacket, 20);
+    if (!rf69_manager.sendtoWait((uint8_t *)radiopacket, strlen(radiopacket), DEST_ADDRESS)) {
+      Serial.println("Sending failed (no ack)");
+    }
+    last_sent_vbat = millis();    
   }
 
   // set last values to current one for next loop
