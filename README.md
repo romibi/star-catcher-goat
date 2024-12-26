@@ -28,11 +28,17 @@ fi
 or
 ```
 if [ "`tty`" = "/dev/tty1" ]; then
-    #tmux new-session -d -s star_catcher_goat '~/start_star_catcher_goat.sh'
     tmux new-session -d -n 'star_catcher_goat'
     tmux send-keys -t star_catcher_goat '~/start_star_catcher_goat.sh' Enter
     tmux -2 attach0session -d
 fi
+```
+with a `~/start_star_catcher_goat.sh` containing:
+```
+#!/bin/bash
+source ~/scg-venv/bin/activate
+export PYTHONUNBUFFERED=1
+python3 ~/star-catcher-goat/star_catcher_goat.py | tee -i ~/star-catcher-goat.log
 ```
 - setup automatic shutoff:
 ```
