@@ -7,7 +7,6 @@ import time
 import subprocess
 import pickle
 from datetime import datetime
-from fileinput import filename
 import platform
 
 import serial
@@ -61,6 +60,7 @@ RECORDING = {}
 
 HIGHSCORES_NORMAL = []
 HIGHSCORES_EASY = []
+FIRST_LOOP = True # to work around time sync error to not show shutdown message in menu background directly after boot
 
 #### HISCORE STUFF ###########################################################
 # todo: move highscore logic (and recordings) out of this file
@@ -566,6 +566,13 @@ def main():
             if (ltime.tm_hour == 22):
                 shutdowntext1 = "Spiel fährt jetzt"
                 shutdowntext2 = "herunter! ..."
+
+            global FIRST_LOOP
+            if FIRST_LOOP:
+                shutdowntext1 = ""
+                shutdowntext2 = ""
+                FIRST_LOOP = False
+
             if (len(shutdowntext1)>0):
                 # clear area for when flashing text is not there
                 shutdowntext_area = Rect(970,305,310,90)
