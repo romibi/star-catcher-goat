@@ -22,9 +22,22 @@ class ControllerConnectionScreen(MenuScreen):
         menu_text_2.font = load_font(64)
 
         menu_text_3 = UiText(self.sprites)
-        menu_text_3.text = "Falls Aus/Ein nicht hilft, Support kontaktieren..."
-        menu_text_3.targetRect = Rect(60, 390, 300, 300)
-        menu_text_3.font = load_font(42)
+        menu_text_3.text = "(Kontroller befindet sich auf"
+        menu_text_3.targetRect = Rect(590, 338, 300, 300)
+        menu_text_3.font = load_font(32)
+        menu_text_3.color = "#B4B4B4"
+
+        menu_text_4 = UiText(self.sprites)
+        menu_text_4.text = "der anderen Strassenseite)"
+        menu_text_4.targetRect = Rect(605, 365, 300, 300)
+        menu_text_4.font = load_font(32)
+        menu_text_4.color = "#B4B4B4"
+
+        menu_text_5 = UiText(self.sprites)
+        menu_text_5.text = "Falls Aus/Ein nicht hilft, Support kontaktieren..."
+        menu_text_5.targetRect = Rect(60, 390, 300, 300)
+        menu_text_5.font = load_font(32)
+        menu_text_5.color = "#B4B4B4"
 
         guide_image = ImageIcon(833, 454, [load_image('turn_on_controller_guide.png', 'ui')], self.sprites)
 
