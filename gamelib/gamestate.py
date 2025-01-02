@@ -49,6 +49,9 @@ class GameState:
     SCORE_STATS = None
     SCORE_MISSED = None
 
+    SCORE_DISPLAY_PAGE = 0
+    LOAD_RECORDING_NR = -1
+
     GAMEPAD_BUTTONS = None
 
     def reset(self, new_columns):
@@ -81,6 +84,9 @@ class GameState:
             else:
                 self.vizConfig.vizRects = self.vizConfig.vizRects6S
             self.vizConfig.vizGoatRects = self.vizConfig.vizGoatRectsS
+
+        self.SCORE_DISPLAY_PAGE = 0
+        self.LOAD_RECORDING_NR = -1
 
         self.LED_HANDLER.reset()
         self.PLAYER.reset()

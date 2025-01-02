@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+import math
 import os
 import random
 import signal
@@ -45,6 +45,7 @@ try:
     CURRENT_GAME_VERSION = get_git_revision_hash()
 except: # noqa
     pass
+
 
 print(f"Running game version {CURRENT_GAME_VERSION}")
 
@@ -235,14 +236,17 @@ def save_recording(points=None):
     return filename
 
 
-def load_last_recording():
+def load_recording(filename=""):
     global RECORDING
     try:
-        game_mode = ""
-        if GAME_CONFIG.COLUMNS == 3:
-            game_mode = "_easy"
+        if filename=="":
+            game_mode = ""
+            if GAME_CONFIG.COLUMNS == 3:
+                game_mode = "_easy"
 
-        filename = os.path.join(main_dir, "recordings", f"recording_last{game_mode}.pickle")
+            filename = os.path.join(main_dir, "recordings", f"recording_last{game_mode}.pickle")
+        else:
+            filename = os.path.join(main_dir, "recordings", filename)
 
         with open(filename, "rb") as f:
             RECORDING = pickle.load(f)
@@ -253,6 +257,24 @@ def load_last_recording():
             print("Warning: loaded game recording was recorded with a different version! Replay might differ!")
     except Exception as ex:
         print("Error during pickling object (Possibly unsupported):", ex)
+
+
+def replay_recording_from_highscores(nr, mode=""):
+    highscores = HIGHSCORES_NORMAL
+    if GAME_CONFIG.COLUMNS == 3:
+        highscores = HIGHSCORES_EASY
+
+    if mode == "normal":
+        highscores = HIGHSCORES_NORMAL
+    elif mode == "easy":
+        highscores = HIGHSCORES_EASY
+
+    if nr >= len(highscores):
+        return
+
+    recording_filename = highscores[nr]["recording_filename"]
+    load_recording(recording_filename)
+    replay(RECORDING)
 
 
 def replay(recording):
@@ -552,6 +574,11 @@ def main():
 
             if GAME_STATE.CURRENT_MENU:
                 GAME_STATE.CURRENT_MENU.loop(serial_keys)
+                if GAME_STATE.LOAD_RECORDING_NR >= 0:
+                    GAME_STATE.CURRENT_MENU = None
+                    replay_recording_from_highscores(GAME_STATE.LOAD_RECORDING_NR)
+                    GAME_STATE.LOAD_RECORDING_NR = -1
+                    continue
             else:
                 play_loop(serial_keys)
                 GAME_STATE.MENU_JUST_CLOSED = False
@@ -633,7 +660,11 @@ def render_highscores():
     if mode == "easy":
         highscores = HIGHSCORES_EASY
 
-    for place in range(10):
+    if GAME_STATE.SCORE_DISPLAY_PAGE*10 + 1 > len(highscores): # if first item on page > len(highscores)
+        GAME_STATE.SCORE_DISPLAY_PAGE = max(0, math.floor((len(highscores)-1)/10)) # reset to last page or page 0
+
+    for line in range(10):
+        place = line + (GAME_STATE.SCORE_DISPLAY_PAGE*10)
         y += 24
         if len(highscores)>place:
             entry = highscores[place]
@@ -694,12 +725,6 @@ def play_loop(serial_keys):
         if key in BUTTONS_MENU_OPEN:
             GAME_STATE.CURRENT_MENU = MENU_FACTORY.FullMenu()
             return True
-        if key == pg.K_PAGEUP:
-            GAME_STATE.reset(6)
-            return True
-        if key == pg.K_PAGEDOWN:
-            GAME_STATE.reset(3)
-            return True
         if key in BUTTONS_MOVE_RIGHT:
             if not GAME_STATE.REPLAY:
                 RECORDING["movements"].append({"frame": GAME_STATE.FRAME_COUNT, "key": pg.K_RIGHT})
@@ -713,7 +738,7 @@ def play_loop(serial_keys):
                 RECORDING["movements"].append({"frame": GAME_STATE.FRAME_COUNT, "key": pg.K_UP})
                 player.jump([star for star in stars if star.hangingLow])
         if (key == pg.K_F7) or (key == pg.K_F10):
-            load_last_recording()
+            load_recording()
             replay(RECORDING)
             return True
         if (key == pg.K_F8) or (key == pg.K_F11):
@@ -762,33 +787,37 @@ def play_loop(serial_keys):
 
     score_missed.text = f"Verpasst: {GAME_STATE.StarsMissed: >2}"
 
-    if (GAME_STATE.FRAME_COUNT == GAME_CONFIG.END_FRAME_COUNT) and (not GAME_STATE.REPLAY):
-        def update_and_save_recording():
-            name = GAME_STATE.PLAYER_NAME
-            RECORDING["player_name"] = name
-            filename = save_recording(points)
-            mode = "normal"
-            if RECORDING["settings"]["columns"] == 3:
-                mode = "easy"
-            horn_catches = player.starsCatchedHorn
-            body_catches = player.starsCatchedButt
-            missed = GAME_STATE.StarsMissed
-
-            add_highscore(points, name, mode, filename, horn_catches, body_catches, missed)
-            persist_all_highscores()
-            re_render_background()
-
-        mode = "normal"
-        if RECORDING["settings"]["columns"] == 3:
-            mode = "easy"
-        if get_highscore_pos(points,  mode) <= 10:
-          trigger_controller_sound("chest")
-        else:
-          trigger_controller_sound("fanfare")
+    if (GAME_STATE.FRAME_COUNT == GAME_CONFIG.END_FRAME_COUNT):
         score_points.text = ""
         score_missed.text = ""
         score_stats.text = ""
-        GAME_STATE.CURRENT_MENU = MENU_FACTORY.NameEntry(update_and_save_recording, re_render_background)
+        if GAME_STATE.REPLAY:
+            re_render_background()
+            GAME_STATE.CURRENT_MENU = MENU_FACTORY.StartMenu(re_render_background)
+        else:
+            def update_and_save_recording():
+                name = GAME_STATE.PLAYER_NAME
+                RECORDING["player_name"] = name
+                filename = save_recording(points)
+                mode = "normal"
+                if RECORDING["settings"]["columns"] == 3:
+                    mode = "easy"
+                horn_catches = player.starsCatchedHorn
+                body_catches = player.starsCatchedButt
+                missed = GAME_STATE.StarsMissed
+
+                add_highscore(points, name, mode, filename, horn_catches, body_catches, missed)
+                persist_all_highscores()
+                re_render_background()
+
+            mode = "normal"
+            if RECORDING["settings"]["columns"] == 3:
+                mode = "easy"
+            if get_highscore_pos(points,  mode) <= 10:
+              trigger_controller_sound("chest")
+            else:
+              trigger_controller_sound("fanfare")
+            GAME_STATE.CURRENT_MENU = MENU_FACTORY.NameEntry(update_and_save_recording, re_render_background)
 
     # re-draw whole background
     if GAME_STATE.MENU_JUST_CLOSED:
