@@ -286,6 +286,8 @@ def replay(recording):
     apply_recording_settings()
 
     GAME_STATE.REPLAY = True
+    re_render_background()
+    pg.display.flip()
     random.seed(RECORDING["seed"])
 
 #### END RECORDING STUFF #########################################################
@@ -698,6 +700,14 @@ def re_render_background():
 
     render_highscores()
 
+    if GAME_STATE.REPLAY:
+        font = load_font(58)
+        player_name = font.render(RECORDING["player_name"], True, Color(255,255,255))
+        player_name_rect = player_name.get_rect()
+        player_name_rect.left = 975
+        player_name_rect.top = 315
+        GAME_STATE.GAME_SCREEN.blit(player_name, player_name_rect)
+
 def reload_highscores_and_rerender_background(sig, frame):
     load_all_highscores()
     re_render_background()
@@ -796,7 +806,9 @@ def play_loop(serial_keys):
         if GAME_STATE.REPLAY or GAME_STATE.FRAME_COUNT != GAME_CONFIG.END_FRAME_COUNT: # aborted or replay
             leds.set_all_leds_off()
             leds.update_leds()
+            GAME_STATE.REPLAY = False
             re_render_background()
+            pg.display.flip()
             GAME_STATE.CURRENT_MENU = MENU_FACTORY.StartMenu(re_render_background)
         else:
             def update_and_save_recording():
