@@ -279,8 +279,8 @@ def replay_recording_from_highscores(nr, mode=""):
 
 def replay(recording):
     global RECORDING
-    
-    GAME_STATE.reset(RECORDING["settings"]["columns"])
+
+    GAME_STATE.reset(RECORDING["settings"]["columns"]) # columns here don't matter yet
 
     RECORDING = recording
     apply_recording_settings()

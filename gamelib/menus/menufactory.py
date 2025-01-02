@@ -30,20 +30,31 @@ class MenuFactory:
         self.gamestate.reset(6)
 
     def _led_text(self):
-        if self.gamestate.LED_HANDLER.active == 1:
-            return "LED Ein/Aus: EIN"
-        else:
+        if self.gamestate.LED_ACTIVE == -1:
+            self.gamestate._LED_ACTIVE = self.gamestate.LED_HANDLER.active
+        if self.gamestate.LED_ACTIVE == 0:
             return "LED Ein/Aus: AUS"
+        else:
+            return "LED Ein/Aus: EIN"
 
     def _led_toggle_active(self, key):
-        leds = self.gamestate.LED_HANDLER
-
-        if leds.active == 1:
-            leds.set_all_leds_off()
-            leds.update_leds()
-            leds.active = 0
+        if self.gamestate.LED_ACTIVE == 0:
+            self.gamestate.LED_ACTIVE = 1
         else:
-            leds.active = 1
+            self.gamestate.LED_ACTIVE = 0
+
+    def _led_on_replay_text(self):
+        text = "LED während Replay Ein/Aus: "
+        if self.gamestate.LED_ACTIVE_ON_REPLAY:
+            text += "EIN"
+        else:
+            text += "AUS"
+        if self.gamestate.LED_ACTIVE == 0:
+            text += " (disabled)"
+        return text
+
+    def _led_on_replay_toggle(self, key):
+        self.gamestate.LED_ACTIVE_ON_REPLAY = not self.gamestate.LED_ACTIVE_ON_REPLAY
 
     def _led_brightness_text(self):
         leds = self.gamestate.LED_HANDLER
@@ -186,6 +197,7 @@ class MenuFactory:
         return MenuScreen(self.gamestate,
             {"Zurück zum Spiel": "close_menu",
              self._led_text: self._led_toggle_active,
+             self._led_on_replay_text: self._led_on_replay_toggle,
              self._led_brightness_text: self._led_brightness,
              self._controller_text: self._controller_action,
              self._controller_sound_text: self._toggle_controller_sound,

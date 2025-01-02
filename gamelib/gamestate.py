@@ -14,7 +14,7 @@ class GameState:
     MENU_JUST_CLOSED = False
     GAME_QUIT = False
 
-    REPLAY = False
+    _REPLAY = False
 
     FRAME_COUNT = 0
     StarsMissed = 0
@@ -32,6 +32,8 @@ class GameState:
     LAST_SERIAL_BUTTONS = []
 
     LED_HANDLER: LedHandler | None
+    _LED_ACTIVE: int
+    LED_ACTIVE_ON_REPLAY: bool
 
     PLAYER_NAME = ""
 
@@ -98,6 +100,36 @@ class GameState:
         if self.OnResetGame:
             self.OnResetGame()
 
+    @property
+    def LED_ACTIVE(self):
+        return self._LED_ACTIVE
+
+    @LED_ACTIVE.setter
+    def LED_ACTIVE(self, value):
+        self._LED_ACTIVE = value
+        self._update_led_handler_active()
+
+    @property
+    def REPLAY(self):
+        return self._REPLAY
+
+    @REPLAY.setter
+    def REPLAY(self, value):
+        self._REPLAY = value
+        self._update_led_handler_active()
+
+    def _update_led_handler_active(self):
+        if not self.LED_HANDLER:
+            return
+
+        active = self.LED_ACTIVE
+        if active and self.REPLAY and (not self.LED_ACTIVE_ON_REPLAY):
+            active = 0
+        self.LED_HANDLER.active = active
+        if active == 0:
+            self.LED_HANDLER.set_all_leds_off()
+            self.LED_HANDLER.update_leds()
+
 
     def __init__(self, conf: GameConfig, visualization_config: GameVisualizationConfig):
         self.config = conf
@@ -105,3 +137,5 @@ class GameState:
         self.screenMode = conf.DEFAULT_SCREEN_MODE
         self.OnResetGame = None
         self.LED_HANDLER = None
+        self.LED_ACTIVE = 1 # 0: no, 1: yes, -1: active unless first request fails
+        self.LED_ACTIVE_ON_REPLAY = False
