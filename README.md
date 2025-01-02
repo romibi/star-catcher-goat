@@ -30,7 +30,7 @@ or
 if [ "`tty`" = "/dev/tty1" ]; then
     tmux new-session -d -n 'star_catcher_goat'
     tmux send-keys -t star_catcher_goat '~/start_star_catcher_goat.sh' Enter
-    tmux -2 attach0session -d
+    tmux -2 attach-session -d
 fi
 ```
 with a `~/start_star_catcher_goat.sh` containing:
