@@ -787,11 +787,15 @@ def play_loop(serial_keys):
 
     score_missed.text = f"Verpasst: {GAME_STATE.StarsMissed: >2}"
 
-    if (GAME_STATE.FRAME_COUNT == GAME_CONFIG.END_FRAME_COUNT):
+    leds = GAME_STATE.LED_HANDLER
+
+    if (GAME_STATE.FRAME_COUNT >= GAME_CONFIG.END_FRAME_COUNT):
         score_points.text = ""
         score_missed.text = ""
         score_stats.text = ""
-        if GAME_STATE.REPLAY:
+        if GAME_STATE.REPLAY or GAME_STATE.FRAME_COUNT != GAME_CONFIG.END_FRAME_COUNT: # aborted or replay
+            leds.set_all_leds_off()
+            leds.update_leds()
             re_render_background()
             GAME_STATE.CURRENT_MENU = MENU_FACTORY.StartMenu(re_render_background)
         else:
@@ -826,8 +830,6 @@ def play_loop(serial_keys):
     # clear/erase the last drawn sprites
     game_sprites.clear(screen, background)
     
-    leds = GAME_STATE.LED_HANDLER
-
     leds.set_all_leds_off(only_stars=True)
 
     # make stars land on player before update

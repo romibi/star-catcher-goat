@@ -33,9 +33,9 @@ class MenuFactory:
         if self.gamestate.LED_ACTIVE == -1:
             self.gamestate._LED_ACTIVE = self.gamestate.LED_HANDLER.active
         if self.gamestate.LED_ACTIVE == 0:
-            return "LED Ein/Aus: AUS"
+            return "LEDs: AUS"
         else:
-            return "LED Ein/Aus: EIN"
+            return "LEDs: EIN"
 
     def _led_toggle_active(self, key):
         if self.gamestate.LED_ACTIVE == 0:
@@ -44,14 +44,18 @@ class MenuFactory:
             self.gamestate.LED_ACTIVE = 0
 
     def _led_on_replay_text(self):
-        text = "LED während Replay Ein/Aus: "
+        text = "Replay LEDs: "
         if self.gamestate.LED_ACTIVE_ON_REPLAY:
             text += "EIN"
         else:
             text += "AUS"
         if self.gamestate.LED_ACTIVE == 0:
-            text += " (disabled)"
+            text += " (LEDs AUS)"
         return text
+
+    def _end_current_game(self, key):
+        self.gamestate.FRAME_COUNT = self.gamestate.config.END_FRAME_COUNT+10
+        self._close_menu(key)
 
     def _led_on_replay_toggle(self, key):
         self.gamestate.LED_ACTIVE_ON_REPLAY = not self.gamestate.LED_ACTIVE_ON_REPLAY
@@ -196,13 +200,14 @@ class MenuFactory:
     def FullMenu(self, next_menu=None):  # noqa
         return MenuScreen(self.gamestate,
             {"Zurück zum Spiel": "close_menu",
+             "Neues Spiel (Normal)": self._reset6,
+             "Neues Spiel (Einfach)": self._reset3,
+             "Aktuelles Spiel Abbrechen": self._end_current_game,
+             self._controller_text: self._controller_action,
+             self._controller_sound_text: self._toggle_controller_sound,
              self._led_text: self._led_toggle_active,
              self._led_on_replay_text: self._led_on_replay_toggle,
              self._led_brightness_text: self._led_brightness,
-             self._controller_text: self._controller_action,
-             self._controller_sound_text: self._toggle_controller_sound,
-             "Neues Spiel (Normal)": self._reset6,
-             "Neues Spiel (Einfach)": self._reset3,
              "Spiel Beenden": self._quit_game
              },
             {"controller_dc": self.ControllerConnection},
