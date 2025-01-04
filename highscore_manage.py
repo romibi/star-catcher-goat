@@ -9,13 +9,17 @@ HIGHSCORES_NORMAL = []
 SHOW_RECORDING_FILEPATH = False
 SHOW_ORIG_NAME = False
 SHOW_STATS = False
+SHOW_ALL = False
+SHOW_LIST = ''
+LOG_VERBOSE = False
 
 def load_highscores(name):
     try:
         filename = os.path.join(main_dir, "recordings", name)
 
         with open(filename, "rb") as f:
-            print(f"Loading {filename}")
+            if LOG_VERBOSE:
+                print(f"Loading {filename}")
             highscores = pickle.load(f)
             f.close()
             return highscores
@@ -44,7 +48,8 @@ def persist_highscores(name, highscores):
             # noinspection PyTypeChecker
             pickle.dump(highscores, f, protocol=pickle.HIGHEST_PROTOCOL)
             f.close()
-            print(f"Saved {filename}")
+            if LOG_VERBOSE:
+                print(f"Saved {filename}")
     except Exception as ex:
         print("Error during pickling object (Possibly unsupported):", ex)
 
@@ -74,20 +79,26 @@ def print_entry(entry, pos=None, mode="normal"):
 
 
 def print_highscores(amount=10):
-    print("HIGHSCORE Normal:")
+    if SHOW_LIST == "" or SHOW_LIST == "n":
+        if SHOW_ALL:
+            amount = len(HIGHSCORES_NORMAL)
+        print("HIGHSCORE Normal:")
 
-    for x in range(amount):
-        if x < len(HIGHSCORES_NORMAL):
-            entry = HIGHSCORES_NORMAL[x]
-            print_entry(entry,  x+1)
+        for x in range(amount):
+            if x < len(HIGHSCORES_NORMAL):
+                entry = HIGHSCORES_NORMAL[x]
+                print_entry(entry,  x+1)
 
-    print("")
-
-    print("HIGHSCORE Easy:")
-    for x in range(amount):
-        if x < len(HIGHSCORES_EASY):
-            entry = HIGHSCORES_EASY[x]
-            print_entry(entry, x+1, "easy")
+        if SHOW_LIST == "":
+            print("")
+    if SHOW_LIST == "" or SHOW_LIST == "e":
+        if SHOW_ALL:
+            amount = len(HIGHSCORES_EASY)
+        print("HIGHSCORE Easy:")
+        for x in range(amount):
+            if x < len(HIGHSCORES_EASY):
+                entry = HIGHSCORES_EASY[x]
+                print_entry(entry, x+1, "easy")
 
 def editEntry(list, index):
     entry = list[index]
@@ -104,8 +115,12 @@ def editOn(list):
     editEntry(list, index-1)
 
 def edit():
-    print("Which Highscore List to edit? (n=normal, e=easy)")
-    selection = input()
+    if SHOW_LIST == "":
+        print("Which Highscore List to edit? (n=normal, e=easy)")
+        selection = input()
+    else:
+        selection = SHOW_LIST
+
     if selection == "n":
         editOn(HIGHSCORES_NORMAL)
     if selection == "e":
@@ -124,24 +139,31 @@ def deleteFrom(list):
     deleteEntry(list, index-1)
 
 def delete():
-    print("From which Highscore List to delete? (n=normal, e=easy)")
-    selection = input()
+    if SHOW_LIST == "":
+        print("From which Highscore List to delete? (n=normal, e=easy)")
+        selection = input()
+    else:
+        selection = SHOW_LIST
+
     if selection == "n":
         deleteFrom(HIGHSCORES_NORMAL)
     if selection == "e":
         deleteFrom(HIGHSCORES_EASY)
 
 def save():
-    print("Which Highscore List to save? (n=normal, e=easy)")
+    if SHOW_LIST == "":
+        print("Which Highscore List to save? (n=normal, e=easy)")
+        selection = input()
+    else:
+        selection = SHOW_LIST
 
-    selection = input()
     if selection == "n":
         persist_highscores("highscores.pickle", HIGHSCORES_NORMAL)
     if selection == "e":
         persist_highscores("highscores_easy.pickle", HIGHSCORES_EASY)
 
 def taskquery():
-    print("Action? (e=edit, d=delete, s=save, l=reload, q=quit, f=show/hide recording file path, o=orig name on/off)")
+    print("Action? (e=edit, d=delete, s=save, l=reload, q=quit, a=all/top10, t=toggle lists, f=show/hide recording file path, o=orig name on/off)")
     action = input()
     if action == "q":
         return False
@@ -160,9 +182,29 @@ def taskquery():
     if action == "f":
         global SHOW_RECORDING_FILEPATH
         SHOW_RECORDING_FILEPATH = not SHOW_RECORDING_FILEPATH
+        return True
     if action == "o":
         global SHOW_ORIG_NAME
         SHOW_ORIG_NAME = not SHOW_ORIG_NAME
+        return True
+    if action == "a":
+        global SHOW_ALL
+        SHOW_ALL = not SHOW_ALL
+    if action == "t":
+        global SHOW_LIST
+        if SHOW_LIST == "":
+            SHOW_LIST = "n"
+            print("Showing Normal only")
+        elif SHOW_LIST == "n":
+            SHOW_LIST = "e"
+            print("Showing Easy only")
+        elif SHOW_LIST == "e":
+            SHOW_LIST = ""
+            print("Showing Normal and Easy list")
+        else:
+            SHOW_LIST = ""
+            print("Unknown state. Reverting to Showing both lists")
+        return True
     print("Unknown action")
     return True
 
@@ -181,11 +223,25 @@ def main():
         if  arg == "-s":
             global SHOW_STATS
             SHOW_STATS = True
+        if arg == "-a":
+            global SHOW_ALL
+            SHOW_ALL = True
+        global SHOW_LIST
+        if arg == "-le":
+            SHOW_LIST = "e"
+        if arg == "-ln":
+            SHOW_LIST = "n"
+        if arg == "-v":
+            global LOG_VERBOSE
+            LOG_VERBOSE = True
         if arg == "-h" or arg == "--help":
             print(f"{sys.argv[0]} -i → Interaktiv")
             print(f"{sys.argv[0]} -o → Originale Namen anzeigen")
             print(f"{sys.argv[0]} -f → Datei-Pfade anzeigen")
             print(f"{sys.argv[0]} -s → Punkt-Details anzeigen (Horn/Total/Verpasst)")
+            print(f"{sys.argv[0]} -a → Alle Highscore-Einträge anzeigen")
+            print(f"{sys.argv[0]} -l[e|n] → nur Einfache oder nur Normale Liste anzeigen")
+            print(f"{sys.argv[0]} -v → Erweitertes Loggging")
             print(f"{sys.argv[0]} -h → Diese Hilfe anzeigen")
             return
 
